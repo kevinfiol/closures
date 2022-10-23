@@ -12,10 +12,7 @@
   "scripts": {
     "test": "node test/index.js",
     "build": "bundt index.js",
-    "prfepare": "bundt index.js && node test.js",
-    "release:patch": "npm version patch && git push --follow-tags && npm publish",
-    "release:minor": "npm version minor && git push --follow-tags && npm publish",
-    "release:major": "npm version major && git push --follow-tags && npm publish"
+    "prepare": "bundt index.js && node test.js"
   },
   "engines": {
     "node": ">=12.x"
