@@ -1,43 +1,36 @@
-let EMPTY_OBJECT = {};
-let REF_SINGLE = 1; // ref with a single dom node
-let REF_ARRAY = 4; // ref with an array od nodes
-let REF_PARENT = 8; // ref with a child ref
-let SVG_NS = "http://www.w3.org/2000/svg";
-
-let DOM_PROPS_DIRECTIVES = {
-  selected: propDirective("selected"),
-  checked: propDirective("checked"),
-  value: propDirective("value"),
-  innerHTML: propDirective("innerHTML"),
-};
-
-let XLINK_NS = "http://www.w3.org/1999/xlink";
-let NS_ATTRS = { show: XLINK_NS, actuate: XLINK_NS, href: XLINK_NS };
-
-let VTYPE_ELEMENT = 1;
-let VTYPE_FUNCTION = 2;
-let VTYPE_COMPONENT = 4;
-
-let noop = _ => {};
-let isFn = x => typeof x === 'function';
-let isStr = x => typeof x === 'string';
-let isObj = x => x !== null && typeof x === 'object';
-let isArr = x => Array.isArray(x);
-
-let isEmpty = c => c === null || c === false || c === undefined || (isArr(c) && c.length === 0);
-let isNonEmptyArray = c => isArr(c) && c.length > 0;
-let isLeaf = c => isStr(c) || typeof c === "number";
-let isElement = c => c && c.vtype === VTYPE_ELEMENT;
-let isRenderFunction = c => c && c.vtype === VTYPE_FUNCTION;
-let isComponent = c => c && c.vtype === VTYPE_COMPONENT;
-let isValidComponentType = c => c && isFn(c.mount);
-
-let DEFAULT_ENV = {
-  isSvg: false,
-  directives: DOM_PROPS_DIRECTIVES,
-};
-
-let MOUNTING = [];
+let EMPTY_OBJECT = {},
+  REF_SINGLE = 1, // ref with a single dom node
+  REF_ARRAY = 4, // ref with an array od nodes
+  REF_PARENT = 8, // ref with a child ref
+  SVG_NS = "http://www.w3.org/2000/svg",
+  DOM_PROPS_DIRECTIVES = {
+    selected: propDirective("selected"),
+    checked: propDirective("checked"),
+    value: propDirective("value"),
+    innerHTML: propDirective("innerHTML"),
+  },
+  DEFAULT_ENV = {
+    isSvg: false,
+    directives: DOM_PROPS_DIRECTIVES,
+  },
+  MOUNTING = [],
+  XLINK_NS = "http://www.w3.org/1999/xlink",
+  NS_ATTRS = { show: XLINK_NS, actuate: XLINK_NS, href: XLINK_NS },
+  VTYPE_ELEMENT = 1,
+  VTYPE_FUNCTION = 2,
+  VTYPE_COMPONENT = 4,
+  noop = _ => {},
+  isFn = x => typeof x === 'function',
+  isStr = x => typeof x === 'string',
+  isObj = x => x !== null && typeof x === 'object',
+  isArr = x => Array.isArray(x),
+  isEmpty = c => c === null || c === false || c === undefined || (isArr(c) && c.length === 0),
+  isNonEmptyArray = c => isArr(c) && c.length > 0,
+  isLeaf = c => isStr(c) || typeof c === "number",
+  isElement = c => c && c.vtype === VTYPE_ELEMENT,
+  isRenderFunction = c => c && c.vtype === VTYPE_FUNCTION,
+  isComponent = c => c && c.vtype === VTYPE_COMPONENT,
+  isValidComponentType = c => c && isFn(c.mount);
 
 export const m = h;
 
