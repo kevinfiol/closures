@@ -229,7 +229,11 @@ function mount(vnode, env = DEFAULT_ENV) {
     let parentCmp;
     if (parentCmp = MOUNTING[MOUNTING.length - 1]) {
       let child_closure = CMP_TO_CLOSURE.get(vnode),
-        childs = CHILDS.get(parentCmp) || [];
+        childs = CHILDS.get(parentCmp) || [],
+        idx = childs.length;
+        
+      // attach method to remove self from parent
+      vnode.__tag.removeFromParent = _ => childs.splice(idx, 1);
 
       childs.push({
         id: vnode.id,
@@ -401,7 +405,7 @@ function unmount(vnode, ref, env) {
       unmount(childVNode, ref.children[index], env)
     );
   } else if (isRenderFunction(vnode)) {
-    let cmp, cmps = CLOSURE_TO_CMP.get(vnode.type);
+    let cmp, cmps = CLOSURE_TO_CMP.get(vnode.__tag);
     if (cmps && vnode.id && (cmp = cmps[vnode.id])) {
       delete cmps[vnode.id];
       CMP_TO_CLOSURE.delete(cmp);
@@ -718,6 +722,7 @@ function toClosureCmp(vnode, view) {
       props: vnode.props || {},
       __tag: {
         view,
+        removeFromParent: noop,
         event: noop,
         mount: render,
         patch: render,
@@ -725,9 +730,14 @@ function toClosureCmp(vnode, view) {
           onRemove();
           let childs;
           if (childs = CHILDS.get(cmp)) {
-            for (let i = 0; i < childs.length; i++) unmount(childs[i], EMPTY_OBJECT);
+            for (let i = 0; i < childs.length; i++) {
+              unmount(childs[i], EMPTY_OBJECT);
+            }
+
             CHILDS.delete(cmp);
           }
+          
+          cmp.__tag.removeFromParent();
         }
       }
     };
