@@ -13,12 +13,18 @@ let EMPTY_OBJECT = {},
     isSvg: false,
     directives: DOM_PROPS_DIRECTIVES,
   },
+  ON_REMOVES = [],
   MOUNTING = [],
   XLINK_NS = "http://www.w3.org/1999/xlink",
   NS_ATTRS = { show: XLINK_NS, actuate: XLINK_NS, href: XLINK_NS },
+  NUM = 1,
   VTYPE_ELEMENT = 1,
   VTYPE_FUNCTION = 2,
   VTYPE_COMPONENT = 4,
+  CLOSURE_TO_CMP = new WeakMap(),
+  CMP_TO_CLOSURE = new WeakMap(),
+  CHILDS = new WeakMap(),
+  ID = _ => (NUM++).toString(),
   noop = _ => {},
   isFn = x => typeof x === 'function',
   isStr = x => typeof x === 'string',
@@ -33,6 +39,8 @@ let EMPTY_OBJECT = {},
   isValidComponentType = c => c && isFn(c.mount);
 
 export const m = h;
+
+export const onRemove = f => ON_REMOVES.push(f);
 
 export function h(__tag, ...children) {
   let props = children[0];
@@ -168,6 +176,10 @@ function mount(vnode, env = DEFAULT_ENV) {
     } else {
       node = document.createElementNS(SVG_NS, __tag);
     }
+
+    // element lifecycle hooks
+    if (isFn(props.oncreate)) props.oncreate(node);
+
     mountAttributes(node, props, env);
     let childrenRef =
       props.children == null ? props.children : mount(props.children, env);
@@ -189,6 +201,22 @@ function mount(vnode, env = DEFAULT_ENV) {
     };
   } else if (isRenderFunction(vnode)) {
     let childVNode = vnode.__tag(vnode.props);
+
+    if (isFn(childVNode)) {
+      let cmp,
+        view = childVNode,
+        id = ID(),
+        cmps = CLOSURE_TO_CMP.get(vnode.__tag) ?? {};
+      
+      vnode.id = id;
+      cmp = toClosureCmp(vnode, view)
+      
+      cmps[id] = cmp;
+      CLOSURE_TO_CMP.set(vnode.__tag, cmps);
+      CMP_TO_CLOSURE.set(cmp, vnode.__tag);
+      return mount(cmp);
+    }
+
     let childRef = mount(childVNode, env);
     return {
       type: REF_PARENT,
@@ -197,6 +225,21 @@ function mount(vnode, env = DEFAULT_ENV) {
     };
   } else if (isComponent(vnode)) {
     let renderer = new Renderer(vnode.props, env);
+
+    let parentCmp;
+    if (parentCmp = MOUNTING[MOUNTING.length - 1]) {
+      let child_closure = CMP_TO_CLOSURE.get(vnode),
+        childs = CHILDS.get(parentCmp) || [];
+
+      childs.push({
+        id: vnode.id,
+        vtype: VTYPE_FUNCTION,
+        __tag: child_closure
+      });
+
+      CHILDS.set(parentCmp, childs);
+    }
+
     vnode.__tag.mount(renderer);
     return {
       type: REF_PARENT,
@@ -223,6 +266,9 @@ function patch(
   ref,
   env = DEFAULT_ENV
 ) {
+  if (isObj(oldVNode) && isObj(newVNode))
+    newVNode.id = oldVNode.id;
+
   if (oldVNode === newVNode) {
     return ref;
   } else if (isEmpty(newVNode) && isEmpty(oldVNode)) {
@@ -277,6 +323,19 @@ function patch(
         ? renderFn.shouldUpdate(oldVNode.props, newVNode.props)
         : defaultShouldUpdate(oldVNode.props, newVNode.props);
     if (shouldUpdate) {
+      let cmp,
+        id = oldVNode.id,
+        cmps = CLOSURE_TO_CMP.get(renderFn);
+
+      if (cmps && id && (cmp = cmps[id])) {
+        return patch(
+          parentDomNode,
+          { ...cmp, props: newVNode.props },
+          cmp,
+          ref
+        );
+      }
+
       let childVNode = renderFn(newVNode.props);
       let childRef = patch(
         parentDomNode,
@@ -342,6 +401,13 @@ function unmount(vnode, ref, env) {
       unmount(childVNode, ref.children[index], env)
     );
   } else if (isRenderFunction(vnode)) {
+    let cmp, cmps = CLOSURE_TO_CMP.get(vnode.type);
+    if (cmps && vnode.id && (cmp = cmps[vnode.id])) {
+      delete cmps[vnode.id];
+      CMP_TO_CLOSURE.delete(cmp);
+      return unmount(cmp, ref, env);
+    }
+
     unmount(ref.childState, ref.childRef, env);
   } else if (isComponent(vnode)) {
     vnode.__tag.unmount(ref.childState);
@@ -641,4 +707,43 @@ function setDOMAttribute(el, attr, value, isSVG) {
       el.setAttribute(attr, value);
     }
   }
+}
+
+function toClosureCmp(vnode, view) {
+  let onRemove = ON_REMOVES.pop() ?? noop,
+    cmp = {
+      key: vnode.key,
+      id: vnode.id,
+      vtype: VTYPE_COMPONENT,
+      props: vnode.props || {},
+      __tag: {
+        view,
+        event: noop,
+        mount: render,
+        patch: render,
+        unmount: _ => {
+          onRemove();
+          let childs;
+          if (childs = CHILDS.get(cmp)) {
+            for (let i = 0; i < childs.length; i++) unmount(childs[i], EMPTY_OBJECT);
+            CHILDS.delete(cmp);
+          }
+        }
+      }
+    };
+  
+  function render(ctx) {
+    cmp.__tag.event = fn => ev => {
+      fn(ev);
+      MOUNTING.push(cmp);
+      ctx.render(view({ ...ctx.props }));
+      MOUNTING.pop();
+    };
+
+    MOUNTING.push(cmp);
+    ctx.render(view({ ...ctx.props }));
+    MOUNTING.pop();
+  }
+
+  return cmp;
 }
