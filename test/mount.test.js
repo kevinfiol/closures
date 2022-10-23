@@ -1,28 +1,27 @@
-import test from "tape";
-import { h, render } from "../src/index.js";
+import { suite } from 'flitch';
+import { strict as assert } from 'assert';
+import { h, render } from "../index.js";
 
-test("DOM node", (assert) => {
+const test = suite('Mount Tests');
+
+test("DOM node", () => {
   const root = document.createElement("div");
-
   const vnode = document.createTextNode("dom node");
 
   render(vnode, root);
-
   assert.equal(root.firstChild, vnode);
-  assert.end();
 });
 
-test("text node", (assert) => {
+test("text node", () => {
   const root = document.createElement("div");
-
   render("raw text", root);
   let node = root.firstChild;
+
   assert.equal(node.nodeName, "#text");
   assert.equal(node.nodeValue, "raw text");
-  assert.end();
 });
 
-test("simple element", (assert) => {
+test("simple element", () => {
   const root = document.createElement("div");
   const vnode = h(
     "span",
@@ -39,10 +38,9 @@ test("simple element", (assert) => {
   assert.equal(node.style.color, "red");
   assert.equal(node.childNodes.length, 1);
   assert.equal(node.firstChild.nodeValue, "span content");
-  assert.end();
 });
 
-test("simple element without children", (assert) => {
+test("simple element without children", () => {
   const root = document.createElement("div");
 
   const vnode = h("input", { type: "text" });
@@ -53,10 +51,9 @@ test("simple element without children", (assert) => {
   assert.equal(node.nodeName, "INPUT");
   assert.equal(node.type, "text");
   assert.equal(node.childNodes.length, 0);
-  assert.end();
 });
 
-test("element with multiple children", (assert) => {
+test("element with multiple children", () => {
   const root = document.createElement("div");
 
   const vnode = h(
@@ -86,11 +83,9 @@ test("element with multiple children", (assert) => {
   const text = node.childNodes[2];
   assert.equal(text.nodeName, "#text");
   assert.equal(text.nodeValue, "raw text");
-
-  assert.end();
 });
 
-test("element with nested array", (assert) => {
+test("element with nested array", () => {
   const root = document.createElement("div");
 
   const vnode = h(
@@ -124,11 +119,9 @@ test("element with nested array", (assert) => {
   const text2 = node.childNodes[3];
   assert.equal(text2.nodeName, "#text");
   assert.equal(text2.nodeValue, "raw text");
-
-  assert.end();
 });
 
-test("render functions", (assert) => {
+test("render functions", () => {
   const root = document.createElement("div");
 
   function Box(props) {
@@ -144,10 +137,9 @@ test("render functions", (assert) => {
   assert.equal(node.title, "box title");
   assert.equal(node.childNodes.length, 1);
   assert.equal(node.firstChild.nodeValue, "box content");
-  assert.end();
 });
 
-test("Component/sync rendering", (assert) => {
+test("Component/sync rendering", () => {
   const root = document.createElement("div");
 
   const MyComponent = {
@@ -162,11 +154,9 @@ test("Component/sync rendering", (assert) => {
   render(vnode, root);
   const node = root.firstChild;
   assert.equal(node.nodeValue, props.some_prop);
-
-  assert.end();
 });
 
-test("Mount Component/async rendering", (assert) => {
+test("Mount Component/async rendering", async () => {
   const root = document.createElement("div");
 
   let p = new Promise((resolve) => setTimeout(resolve, 0));
@@ -182,13 +172,12 @@ test("Mount Component/async rendering", (assert) => {
 
   assert.equal(root.firstChild.nodeType, 8 /* comment node */);
 
-  p.then(() => {
+  await p.then(() => {
     assert.equal(root.firstChild.nodeValue, "prop1");
-    assert.end();
   });
 });
 
-test("svg elements", (assert) => {
+test("svg elements", () => {
   const root = document.createElement("div");
 
   const onclick = () => {};
@@ -247,6 +236,4 @@ test("svg elements", (assert) => {
     onclick,
     "should set props instead of attrs once svg context is off"
   );
-
-  assert.end();
 });

@@ -1,35 +1,94 @@
-import {
-  isEmpty,
-  isLeaf,
-  isElement,
-  isComponent,
-  isNonEmptyArray,
-  isRenderFunction,
-} from "./h.js";
-import {
-  SVG_NS,
-  REF_SINGLE,
-  REF_ARRAY,
-  REF_PARENT,
-  DOM_PROPS_DIRECTIVES,
-  insertDom,
-  replaceDom,
-  removeDom,
-  getDomNode,
-  getNextSibling,
-  mountAttributes,
-  mountDirectives,
-  patchDirectives,
-  unmountDirectives,
-  patchAttributes,
-  getParentNode,
-} from "./dom.js";
+let EMPTY_OBJECT = {};
+let REF_SINGLE = 1; // ref with a single dom node
+let REF_ARRAY = 4; // ref with an array od nodes
+let REF_PARENT = 8; // ref with a child ref
+let SVG_NS = "http://www.w3.org/2000/svg";
 
-export const DEFAULT_ENV = {
+let DOM_PROPS_DIRECTIVES = {
+  selected: propDirective("selected"),
+  checked: propDirective("checked"),
+  value: propDirective("value"),
+  innerHTML: propDirective("innerHTML"),
+};
+
+let XLINK_NS = "http://www.w3.org/1999/xlink";
+let NS_ATTRS = { show: XLINK_NS, actuate: XLINK_NS, href: XLINK_NS };
+
+let VTYPE_ELEMENT = 1;
+let VTYPE_FUNCTION = 2;
+let VTYPE_COMPONENT = 4;
+
+let isEmpty = c => c === null || c === false || c === undefined || (Array.isArray(c) && c.length === 0);
+let isNonEmptyArray = c => Array.isArray(c) && c.length > 0;
+let isLeaf = c => typeof c === "string" || typeof c === "number";
+let isElement = c => c && c.vtype === VTYPE_ELEMENT;
+let isRenderFunction = c => c && c.vtype === VTYPE_FUNCTION;
+let isComponent = c => c && c.vtype === VTYPE_COMPONENT;
+let isValidComponentType = c => c && typeof c.mount === "function";
+
+let DEFAULT_ENV = {
   isSvg: false,
   directives: DOM_PROPS_DIRECTIVES,
 };
 
+export function h(type, props, ...children) {
+  props = props ?? EMPTY_OBJECT;
+
+  props =
+    children.length > 1
+      ? Object.assign({}, props, { children })
+      : children.length === 1
+      ? Object.assign({}, props, { children: children[0] })
+      : props;
+
+  return jsx(type, props, props.key);
+}
+
+export function jsx(type, props, key) {
+  if (key !== key) throw new Error("Invalid NaN key");
+  let vtype =
+    typeof type === "string"
+      ? VTYPE_ELEMENT
+      : isValidComponentType(type)
+      ? VTYPE_COMPONENT
+      : typeof type === "function"
+      ? VTYPE_FUNCTION
+      : undefined;
+  if (vtype === undefined) throw new Error("Invalid VNode type");
+  return {
+    vtype,
+    type,
+    key,
+    props,
+  };
+}
+
+export function Fragment(props) {
+  return props.children;
+}
+
+export function render(vnode, parentDomNode, options = {}) {
+  let rootRef = parentDomNode.$$PETIT_DOM_REF;
+  let env = Object.assign({}, DEFAULT_ENV);
+  Object.assign(env.directives, options.directives);
+  if (rootRef == null) {
+    let ref = mount(vnode, env);
+    parentDomNode.$$PETIT_DOM_REF = { ref, vnode };
+    parentDomNode.textContent = "";
+    insertDom(parentDomNode, ref, null);
+  } else {
+    rootRef.ref = patchInPlace(
+      parentDomNode,
+      vnode,
+      rootRef.vnode,
+      rootRef.ref,
+      env
+    );
+    rootRef.vnode = vnode;
+  }
+}
+
+// non exports
 class Renderer {
   constructor(props, env) {
     this.props = props;
@@ -37,7 +96,7 @@ class Renderer {
       env,
       vnode: null,
       parentDomNode: null,
-      ref: mount(null),
+      ref: mount(null)
     };
     this.render = this.render.bind(this);
   }
@@ -48,19 +107,19 @@ class Renderer {
   }
 
   render(vnode) {
-    const state = this._STATE_;
-    const oldVNode = state.vnode;
+    let state = this._STATE_;
+    let oldVNode = state.vnode;
     state.vnode = vnode;
-    if (state.parentDomNode == null) {
+    if (state.parentDomNode === null) {
       let parentNode = getParentNode(state.ref);
-      if (parentNode == null) {
+      if (parentNode === null) {
         state.ref = mount(vnode, state.env);
         return;
       } else {
         state.parentDomNode = parentNode;
       }
     }
-    // here we're sure state.parentDOMNode is defined
+    // here we are sure state.parentDOMNode is defined
     state.ref = patchInPlace(
       state.parentDomNode,
       vnode,
@@ -71,7 +130,7 @@ class Renderer {
   }
 }
 
-export function mount(vnode, env = DEFAULT_ENV) {
+function mount(vnode, env = DEFAULT_ENV) {
   if (isEmpty(vnode)) {
     return {
       type: REF_SINGLE,
@@ -142,7 +201,7 @@ export function mount(vnode, env = DEFAULT_ENV) {
   throw new Error("mount: Invalid Vnode!");
 }
 
-export function patch(
+function patch(
   parentDomNode,
   newVNode,
   oldVNode,
@@ -231,8 +290,8 @@ export function patch(
     isComponent(oldVNode) &&
     newVNode.type === oldVNode.type
   ) {
-    const renderer = ref.childState;
-    const state = renderer._STATE_;
+    let renderer = ref.childState;
+    let state = renderer._STATE_;
     state.env = env;
     state.parentNode = parentDomNode;
     renderer.setProps(newVNode.props);
@@ -257,7 +316,7 @@ export function patch(
 /**
  * Execute any compoenent specific unmount code
  */
-export function unmount(vnode, ref, env) {
+function unmount(vnode, ref, env) {
   // if (vnode instanceof Node ||  isEmpty(vnode) || isLeaf(vnode)) return;
   if (isElement(vnode)) {
     unmountDirectives(ref.node, vnode.props, env);
@@ -274,8 +333,8 @@ export function unmount(vnode, ref, env) {
   }
 }
 
-export function patchInPlace(parentDomNode, newVNode, oldVNode, ref, env) {
-  const newRef = patch(parentDomNode, newVNode, oldVNode, ref, env);
+function patchInPlace(parentDomNode, newVNode, oldVNode, ref, env) {
+  let newRef = patch(parentDomNode, newVNode, oldVNode, ref, env);
   if (newRef !== ref) {
     replaceDom(parentDomNode, newRef, ref);
     unmount(oldVNode, ref, env);
@@ -286,8 +345,8 @@ export function patchInPlace(parentDomNode, newVNode, oldVNode, ref, env) {
 function patchChildren(parentDomNode, newChildren, oldchildren, ref, env) {
   // We need to retreive the next sibling before the old children
   // get eventually removed from the current DOM document
-  const nextNode = getNextSibling(ref);
-  const children = Array(newChildren.length);
+  let nextNode = getNextSibling(ref);
+  let children = Array(newChildren.length);
   let refChildren = ref.children;
   let newStart = 0,
     oldStart = 0,
@@ -307,7 +366,7 @@ function patchChildren(parentDomNode, newChildren, oldchildren, ref, env) {
 
     oldVNode = oldchildren[oldStart];
     newVNode = newChildren[newStart];
-    if (newVNode?.key === oldVNode?.key) {
+    if (newVNode.key === oldVNode.key) {
       oldRef = refChildren[oldStart];
       newRef = children[newStart] = patchInPlace(
         parentDomNode,
@@ -323,7 +382,7 @@ function patchChildren(parentDomNode, newChildren, oldchildren, ref, env) {
 
     oldVNode = oldchildren[oldEnd];
     newVNode = newChildren[newEnd];
-    if (newVNode?.key === oldVNode?.key) {
+    if (newVNode.key === oldVNode.key) {
       oldRef = refChildren[oldEnd];
       newRef = children[newEnd] = patchInPlace(
         parentDomNode,
@@ -341,14 +400,14 @@ function patchChildren(parentDomNode, newChildren, oldchildren, ref, env) {
       refMap = {};
       for (let i = oldStart; i <= oldEnd; i++) {
         oldVNode = oldchildren[i];
-        if (oldVNode?.key != null) {
+        if (oldVNode.key != null) {
           refMap[oldVNode.key] = i;
         }
       }
     }
 
     newVNode = newChildren[newStart];
-    const idx = newVNode?.key != null ? refMap[newVNode.key] : null;
+    let idx = newVNode.key != null ? refMap[newVNode.key] : null;
     if (idx != null) {
       oldVNode = oldchildren[idx];
       oldRef = refChildren[idx];
@@ -372,12 +431,12 @@ function patchChildren(parentDomNode, newChildren, oldchildren, ref, env) {
     newStart++;
   }
 
-  const beforeNode =
+  let beforeNode =
     newEnd < newChildren.length - 1
       ? getDomNode(children[newEnd + 1])
       : nextNode;
   while (newStart <= newEnd) {
-    const newRef = mount(newChildren[newStart], env);
+    let newRef = mount(newChildren[newStart], env);
     children[newStart] = newRef;
     insertDom(parentDomNode, newRef, beforeNode);
     newStart++;
@@ -399,4 +458,170 @@ function defaultShouldUpdate(p1, p2) {
     if (p1[key] !== p2[key]) return true;
   }
   return false;
+}
+
+function propDirective(prop) {
+  return {
+    mount(element, value) {``
+      element[prop] = value;
+    },
+    patch(element, newValue, oldValue) {
+      if (newValue !== oldValue) {
+        element[prop] = newValue;
+      }
+    },
+    unmount(element, _) {
+      element[prop] = null;
+    },
+  };
+}
+
+function getDomNode(ref) {
+  if (ref.type === REF_SINGLE) {
+    return ref.node;
+  } else if (ref.type === REF_ARRAY) {
+    return getDomNode(ref.children[0]);
+  } else if (ref.type === REF_PARENT) {
+    return getDomNode(ref.childRef);
+  }
+  throw new Error("Unkown ref type " + JSON.stringify(ref));
+}
+
+function getParentNode(ref) {
+  if (ref.type === REF_SINGLE) {
+    return ref.node.parentNode;
+  } else if (ref.type === REF_ARRAY) {
+    return getParentNode(ref.children[0]);
+  } else if (ref.type === REF_PARENT) {
+    return getParentNode(ref.childRef);
+  }
+  throw new Error("Unkown ref type " + ref);
+}
+
+function getNextSibling(ref) {
+  if (ref.type === REF_SINGLE) {
+    return ref.node.nextSibling;
+  } else if (ref.type === REF_ARRAY) {
+    return getNextSibling(ref.children[ref.children.length - 1]);
+  } else if (ref.type === REF_PARENT) {
+    return getNextSibling(ref.childRef);
+  }
+  throw new Error("Unkown ref type " + JSON.stringify(ref));
+}
+
+function insertDom(parent, ref, nextSibling) {
+  if (ref.type === REF_SINGLE) {
+    parent.insertBefore(ref.node, nextSibling);
+  } else if (ref.type === REF_ARRAY) {
+    ref.children.forEach((ch) => {
+      insertDom(parent, ch, nextSibling);
+    });
+  } else if (ref.type === REF_PARENT) {
+    insertDom(parent, ref.childRef, nextSibling);
+  } else {
+    throw new Error("Unkown ref type " + JSON.stringify(ref));
+  }
+}
+
+function removeDom(parent, ref) {
+  if (ref.type === REF_SINGLE) {
+    parent.removeChild(ref.node);
+  } else if (ref.type === REF_ARRAY) {
+    ref.children.forEach((ch) => {
+      removeDom(parent, ch);
+    });
+  } else if (ref.type === REF_PARENT) {
+    removeDom(parent, ref.childRef);
+  } else {
+    throw new Error("Unkown ref type " + ref);
+  }
+}
+
+function replaceDom(parent, newRef, oldRef) {
+  insertDom(parent, newRef, getDomNode(oldRef));
+  removeDom(parent, oldRef);
+}
+
+function mountDirectives(domElement, props, env) {
+  for (let key in props) {
+    if (key in env.directives) {
+      env.directives[key].mount(domElement, props[key]);
+    }
+  }
+}
+
+function patchDirectives(domElement, newProps, oldProps, env) {
+  for (let key in newProps) {
+    if (key in env.directives) {
+      env.directives[key].patch(domElement, newProps[key], oldProps[key]);
+    }
+  }
+  for (let key in oldProps) {
+    if (key in env.directives && !(key in newProps)) {
+      env.directives[key].unmount(domElement, oldProps[key]);
+    }
+  }
+}
+
+function unmountDirectives(domElement, props, env) {
+  for (let key in props) {
+    if (key in env.directives) {
+      env.directives[key].unmount(domElement, props[key]);
+    }
+  }
+}
+
+function mountAttributes(domElement, props, env) {
+  for (var key in props) {
+    if (key === "key" || key === "children" || key in env.directives) continue;
+    if (key.startsWith("on")) {
+      domElement[key.toLowerCase()] = props[key];
+    } else {
+      setDOMAttribute(domElement, key, props[key], env.isSVG);
+    }
+  }
+}
+
+function patchAttributes(domElement, newProps, oldProps, env) {
+  for (var key in newProps) {
+    if (key === "key" || key === "children" || key in env.directives) continue;
+    var oldValue = oldProps[key];
+    var newValue = newProps[key];
+    if (oldValue !== newValue) {
+      if (key.startsWith("on")) {
+        domElement[key.toLowerCase()] = newValue;
+      } else {
+        setDOMAttribute(domElement, key, newValue, env.isSVG);
+      }
+    }
+  }
+  for (key in oldProps) {
+    if (
+      key === "key" ||
+      key === "children" ||
+      key in env.directives ||
+      key in newProps
+    )
+      continue;
+    if (key.startsWith("on")) {
+      domElement[key.toLowerCase()] = null;
+    } else {
+      domElement.removeAttribute(key);
+    }
+  }
+}
+
+function setDOMAttribute(el, attr, value, isSVG) {
+  if (value === true) {
+    el.setAttribute(attr, "");
+  } else if (value === false) {
+    el.removeAttribute(attr);
+  } else {
+    var namespace = isSVG ? NS_ATTRS[attr] : undefined;
+    if (namespace !== undefined) {
+      el.setAttributeNS(namespace, attr, value);
+    } else {
+      el.setAttribute(attr, value);
+    }
+  }
 }

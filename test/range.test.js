@@ -1,7 +1,10 @@
-import test from "tape";
-import { h, render } from "../src/index.js";
+import { suite } from 'flitch';
+import { strict as assert } from 'assert';
+import { h, render } from "../index.js";
 
-test("range input", (assert) => {
+const test = suite('Range Tests');
+
+test("range input", () => {
   const root = document.createElement("div");
   render(
     h("input", {
@@ -30,5 +33,4 @@ test("range input", (assert) => {
   );
 
   assert.equal(node.value, "1.5", "range value should be 1.5");
-  assert.end();
 });

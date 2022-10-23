@@ -1,16 +1,15 @@
-import test from "tape";
+import { suite } from 'flitch';
 
-test("mounting directives", (assert) => {
-  assert.pass("TODO");
-  assert.end();
+const test = suite('Directives Tests');
+
+test("mounting directives", () => {
+  // todo
 });
 
-test("patching directives", (assert) => {
-  assert.pass("TODO");
-  assert.end();
+test("patching directives", () => {
+  // todo
 });
 
-test("unmounting directives", (assert) => {
-  assert.pass("TODO");
-  assert.end();
+test("unmounting directives", () => {
+  // todo
 });

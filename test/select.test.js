@@ -1,12 +1,15 @@
-import test from "tape";
-import { h, render } from "../src/index.js";
+import { suite } from 'flitch';
+import { strict as assert } from 'assert';
+import { h, render } from "../index.js";
 
-test("select.option.selected (single selection)", (assert) => {
+const test = suite('Select Tests');
+
+test("select.option.selected (single selection)", () => {
   const root = document.createElement("div");
   render(
     h(
       "select",
-      null,
+      {},
       h("option", { value: "eat" }, "Eat"),
       h("option", { value: "pray", selected: true }, "Pray"),
       h("option", { value: "love" }, "Love")
@@ -20,7 +23,7 @@ test("select.option.selected (single selection)", (assert) => {
   render(
     h(
       "select",
-      null,
+      {},
       h("option", { value: "eat", selected: true }, "Eat"),
       h("option", { value: "pray" }, "Pray"),
       h("option", { value: "love" }, "Love")
@@ -29,10 +32,9 @@ test("select.option.selected (single selection)", (assert) => {
   );
 
   assert.equal(node.selectedIndex, 0, "selected index should be 0");
-  assert.end();
 });
 
-test("select.value (single selection)", (assert) => {
+test("select.value (single selection)", () => {
   const root = document.createElement("div");
   render(
     h(
@@ -61,10 +63,9 @@ test("select.value (single selection)", (assert) => {
   );
 
   assert.equal(node.selectedIndex, 0, "selected index should be 0");
-  assert.end();
 });
 
-test("select with multiple = true", (assert) => {
+test("select with multiple = true", () => {
   const root = document.createElement("div");
   render(
     h(
@@ -135,5 +136,4 @@ test("select with multiple = true", (assert) => {
     false,
     "option 2 should not be selected"
   );
-  assert.end();
 });

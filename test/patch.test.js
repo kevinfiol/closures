@@ -1,6 +1,8 @@
-import test from "tape";
-import { Fragment } from "../src/h.js";
-import { h, render } from "../src/index.js";
+import { suite } from 'flitch';
+import { strict as assert } from 'assert';
+import { Fragment, h, render } from "../index.js";
+
+const test = suite('Patch Tests');
 
 //  Fisher-Yates Shuffle
 // code from https://stackoverflow.com/a/6274398/1430627
@@ -24,7 +26,7 @@ function shuffle(array) {
   return array;
 }
 
-test("DOM node", (assert) => {
+test("DOM node", () => {
   const root = document.createElement("div");
 
   const node = document.createTextNode("node1");
@@ -40,11 +42,9 @@ test("DOM node", (assert) => {
   assert.equal(node, node1);
   assert.equal(node, node2);
   assert.equal(node.nodeValue, "node1 new text");
-
-  assert.end();
 });
 
-test("text node", (assert) => {
+test("text node", () => {
   const root = document.createElement("div");
 
   render("old text", root);
@@ -55,11 +55,9 @@ test("text node", (assert) => {
 
   assert.equal(node1, node2);
   assert.equal(node2.nodeValue, "new text");
-
-  assert.end();
 });
 
-test("patch node with different types", (assert) => {
+test("patch node with different types", () => {
   const root = document.createElement("div");
 
   const vnode1 = "old text";
@@ -84,11 +82,9 @@ test("patch node with different types", (assert) => {
 
   assert.notEqual(node3, node4);
   assert.equal(node4.tagName, "DIV");
-
-  assert.end();
 });
 
-test("patch props", (assert) => {
+test("patch props", () => {
   const root = document.createElement("div");
 
   render(
@@ -116,11 +112,9 @@ test("patch props", (assert) => {
   assert.equal(node.value, "new value");
   assert.equal(node.style.color, "green");
   assert.equal(node.style.border, "1px solid black");
-
-  assert.end();
 });
 
-test("patch attributes (svg)", (assert) => {
+test("patch attributes (svg)", () => {
   const root = document.createElement("div");
 
   render(
@@ -168,11 +162,9 @@ test("patch attributes (svg)", (assert) => {
     onclick,
     "should patch props instead of attributes once svg context is off"
   );
-
-  assert.end();
 });
 
-test("patch non keyed children", (assert) => {
+test("patch non keyed children", () => {
   const root = document.createElement("div");
   const view = (s) => h("div", null, s.split(""));
 
@@ -181,27 +173,25 @@ test("patch non keyed children", (assert) => {
   node = root.firstChild;
 
   function testPatch(seq, message) {
-    assert.test(message, (assert) => {
-      render(view(seq), root);
-      assert.plan(seq.length * 2 + 1);
+    render(view(seq), root);
+    // assert.plan(seq.length * 2 + 1);
+
+    assert.equal(
+      node.childNodes.length,
+      seq.length,
+      "should have same number of children"
+    );
+    for (var i = 0; i < seq.length; i++) {
+      const text = seq[i];
+      const childNode = node.childNodes[i];
 
       assert.equal(
-        node.childNodes.length,
-        seq.length,
-        "should have same number of children"
+        childNode.nodeName,
+        "#text",
+        "child should be a text node"
       );
-      for (var i = 0; i < seq.length; i++) {
-        const text = seq[i];
-        const childNode = node.childNodes[i];
-
-        assert.equal(
-          childNode.nodeName,
-          "#text",
-          "child should be a text node"
-        );
-        assert.equal(childNode.nodeValue, text, "should patch text content");
-      }
-    });
+      assert.equal(childNode.nodeValue, text, "should patch text content");
+    }
   }
 
   testPatch("36", "append to an empty sequence");
@@ -218,11 +208,9 @@ test("patch non keyed children", (assert) => {
   render(view(""), root);
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
-
-  assert.end();
 });
 
-test("patch keyed children", (assert) => {
+test("patch keyed children", () => {
   const root = document.createElement("div");
   const view = (str) =>
     h(
@@ -238,36 +226,34 @@ test("patch keyed children", (assert) => {
     prevSeq = "";
 
   function testPatch(seq, message) {
-    assert.test(message, (assert) => {
-      render(view(seq), root);
-      let childNodes = Array.from(node.childNodes);
+    render(view(seq), root);
+    let childNodes = Array.from(node.childNodes);
 
-      assert.plan(seq.length * 2 + 1);
-      assert.equal(childNodes.length, seq.length);
+    // assert.plan(seq.length * 2 + 1);
+    assert.equal(childNodes.length, seq.length);
 
-      for (var i = 0; i < seq.length; i++) {
-        const text = seq[i];
+    for (var i = 0; i < seq.length; i++) {
+      const text = seq[i];
 
-        const index = prevSeq.indexOf(text);
-        if (index >= 0) {
-          assert.equal(
-            prevChildNodes[index],
-            childNodes[i],
-            "should preserve DOM node for " + text
-          );
-        } else {
-          assert.ok(true, "new node " + text);
-        }
+      const index = prevSeq.indexOf(text);
+      if (index >= 0) {
         assert.equal(
-          childNodes[i].firstChild.nodeValue,
-          text,
-          "should patch text content"
+          prevChildNodes[index],
+          childNodes[i],
+          "should preserve DOM node for " + text
         );
+      } else {
+        assert.ok(true, "new node " + text);
       }
-      prevSeq = seq;
-      prevChildNodes = childNodes;
-      //assert.end();
-    });
+      assert.equal(
+        childNodes[i].firstChild.nodeValue,
+        text,
+        "should patch text content"
+      );
+    }
+    prevSeq = seq;
+    prevChildNodes = childNodes;
+    //
   }
 
   testPatch("36", "append to an empty sequence");
@@ -286,11 +272,9 @@ test("patch keyed children", (assert) => {
   render(view(""), root);
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
-
-  assert.end();
 });
 
-test("patch fragemnts", (assert) => {
+test("patch fragments", () => {
   const root = document.createElement("div");
 
   const seq = (str, num) => {
@@ -319,31 +303,29 @@ test("patch fragemnts", (assert) => {
   let prevSeq = "";
 
   function matchSeq(seq, prevSeq, childNodes, prevChildNodes, message) {
-    assert.test(message, (assert) => {
-      assert.plan(seq.length * 2 + 1);
+    // assert.plan(seq.length * 2 + 1);
 
-      assert.equal(childNodes.length, seq.length);
+    assert.equal(childNodes.length, seq.length);
 
-      for (var i = 0; i < seq.length; i++) {
-        const text = seq[i];
+    for (var i = 0; i < seq.length; i++) {
+      const text = seq[i];
 
-        const index = prevSeq.indexOf(text);
-        if (index >= 0) {
-          assert.equal(
-            prevChildNodes[index],
-            childNodes[i],
-            "should preserve DOM node for " + text
-          );
-        } else {
-          assert.ok(true, "new node");
-        }
+      const index = prevSeq.indexOf(text);
+      if (index >= 0) {
         assert.equal(
-          childNodes[i].firstChild.nodeValue,
-          text,
-          "should patch text content for " + text
+          prevChildNodes[index],
+          childNodes[i],
+          "should preserve DOM node for " + text
         );
+      } else {
+        assert.ok(true, "new node");
       }
-    });
+      assert.equal(
+        childNodes[i].firstChild.nodeValue,
+        text,
+        "should patch text content for " + text
+      );
+    }
   }
 
   function testPatch(seq, message) {
@@ -379,11 +361,9 @@ test("patch fragemnts", (assert) => {
   testPatch("2x6y37z8", "multiple modifications");
   testPatch(shuffle("2x6y37z8".split("")).join(""), "shuffle");
   testPatch("ABCDEF", "replace all");
-
-  assert.end();
 });
 
-test("patch render functions", (assert) => {
+test("patch render functions", () => {
   // let renderCalls = 0;
   const root = document.createElement("div");
 
@@ -411,10 +391,9 @@ test("patch render functions", (assert) => {
   assert.equal(node.title, "another box title");
   assert.equal(node.firstChild.nodeValue, "another box content");
     */
-  assert.end();
 });
 
-test("Patch Component/sync rendering", (assert) => {
+test("Patch Component/sync rendering", () => {
   const root = document.createElement("div");
 
   const MyComponent = {
@@ -434,11 +413,9 @@ test("Patch Component/sync rendering", (assert) => {
   render(h(MyComponent, { prop: "prop2" }), root);
 
   assert.equal(node.nodeValue, "prop2prop1");
-
-  assert.end();
 });
 
-test("Patch Component/async rendering", (assert) => {
+test("Patch Component/async rendering", async () => {
   const root = document.createElement("div");
 
   let p = new Promise((resolve) => setTimeout(resolve, 0));
@@ -459,13 +436,12 @@ test("Patch Component/async rendering", (assert) => {
   render(h(MyComponent, { prop: "prop2" }), root);
 
   assert.equal(root.firstChild.nodeValue, "prop1");
-  p.then(() => {
+  await p.then(() => {
     assert.equal(root.firstChild.nodeValue, "prop2prop1");
-    assert.end();
   });
 });
 
-test("issues #24: applyDiff fails to insert when oldChildren is modified", (assert) => {
+test("issues #24: applyDiff fails to insert when oldChildren is modified", () => {
   const root = document.createElement("div");
 
   render(
@@ -488,12 +464,9 @@ test("issues #24: applyDiff fails to insert when oldChildren is modified", (asse
     ]),
     root
   );
-
-  assert.pass("Doesn't blow up");
-  assert.end();
 });
 
-test("issues #25: applyDiff fails with empty strings", (assert) => {
+test("issues #25: applyDiff fails with empty strings", () => {
   const root = document.createElement("div");
   render(
     h("div", {}, [
@@ -515,12 +488,9 @@ test("issues #25: applyDiff fails with empty strings", (assert) => {
     ]),
     root
   );
-
-  assert.pass("Doesn't blow up");
-  assert.end();
 });
 
-test("issues #26: applyDiff fails with blank strings", (assert) => {
+test("issues #26: applyDiff fails with blank strings", () => {
   const root = document.createElement("root");
   render(
     h("div", {}, [
@@ -541,12 +511,9 @@ test("issues #26: applyDiff fails with blank strings", (assert) => {
     ]),
     root
   );
-
-  assert.pass("Doesn't blow up");
-  assert.end();
 });
 
-test("issues #27: New DOM-tree is not synced with vdom-tree", (assert) => {
+test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
   const root = document.createElement("div");
   render(
     h("div", {}, [
@@ -602,5 +569,4 @@ test("issues #27: New DOM-tree is not synced with vdom-tree", (assert) => {
   }
 
   checkSimlilarity(vnode, node);
-  assert.end();
 });
