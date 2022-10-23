@@ -18,24 +18,32 @@ let VTYPE_ELEMENT = 1;
 let VTYPE_FUNCTION = 2;
 let VTYPE_COMPONENT = 4;
 
-let isEmpty = c => c === null || c === false || c === undefined || (Array.isArray(c) && c.length === 0);
-let isNonEmptyArray = c => Array.isArray(c) && c.length > 0;
-let isLeaf = c => typeof c === "string" || typeof c === "number";
+let noop = _ => {};
+let isFn = x => typeof x === 'function';
+let isStr = x => typeof x === 'string';
+let isObj = x => x !== null && typeof x === 'object';
+let isArr = x => Array.isArray(x);
+
+let isEmpty = c => c === null || c === false || c === undefined || (isArr(c) && c.length === 0);
+let isNonEmptyArray = c => isArr(c) && c.length > 0;
+let isLeaf = c => isStr(c) || typeof c === "number";
 let isElement = c => c && c.vtype === VTYPE_ELEMENT;
 let isRenderFunction = c => c && c.vtype === VTYPE_FUNCTION;
 let isComponent = c => c && c.vtype === VTYPE_COMPONENT;
-let isValidComponentType = c => c && typeof c.mount === "function";
+let isValidComponentType = c => c && isFn(c.mount);
 
 let DEFAULT_ENV = {
   isSvg: false,
   directives: DOM_PROPS_DIRECTIVES,
 };
 
+let MOUNTING = [];
+
 export const m = h;
 
 export function h(__tag, ...children) {
   let props = children[0];
-  if (props && typeof props === 'object' && !Array.isArray(props) && !(props.__tag || props.props))
+  if (props && isObj(props) && !isArr(props) && !(props.__tag || props.props))
     children.shift();
   else props = EMPTY_OBJECT;
 
@@ -45,9 +53,9 @@ export function h(__tag, ...children) {
       : children.length === 1
       ? Object.assign({}, props, { children: children[0] })
       : props;
-      
+
   // parse tag
-  if (typeof __tag === 'string') {
+  if (isStr(__tag)) {
     let idx = __tag.indexOf('.');
     if (~idx) {
       let className = __tag.slice(idx + 1).replace(/\./g, ' ')
@@ -63,11 +71,11 @@ export function h(__tag, ...children) {
 export function jsx(__tag, props, key) {
   if (key !== key) throw new Error("Invalid NaN key");
   let vtype =
-    typeof __tag === "string"
+    isStr(__tag)
       ? VTYPE_ELEMENT
       : isValidComponentType(__tag)
       ? VTYPE_COMPONENT
-      : typeof __tag === "function"
+      : isFn(__tag)
       ? VTYPE_FUNCTION
       : undefined;
   if (vtype === undefined) throw new Error("Invalid VNode type");
@@ -79,9 +87,7 @@ export function jsx(__tag, props, key) {
   };
 }
 
-export function Fragment(props) {
-  return props.children;
-}
+export const Fragment = props => props.children;
 
 export function render(vnode, parentDomNode, options = {}) {
   let rootRef = parentDomNode.$$PETIT_DOM_REF;
@@ -591,7 +597,8 @@ function mountAttributes(domElement, props, env) {
   for (var key in props) {
     if (key === "key" || key === "children" || key in env.directives) continue;
     if (key.startsWith("on")) {
-      domElement[key.toLowerCase()] = props[key];
+      let cmp = MOUNTING[MOUNTING.length - 1];
+      domElement[key.toLowerCase()] = cmp ? cmp.__tag.event(props[key]) : props[key];
     } else {
       setDOMAttribute(domElement, key, props[key], env.isSVG);
     }
@@ -605,7 +612,8 @@ function patchAttributes(domElement, newProps, oldProps, env) {
     var newValue = newProps[key];
     if (oldValue !== newValue) {
       if (key.startsWith("on")) {
-        domElement[key.toLowerCase()] = newValue;
+        let cmp = MOUNTING[MOUNTING.length - 1];
+        domElement[key.toLowerCase()] = cmp ? cmp.__tag.event(newValue) : newValue;
       } else {
         setDOMAttribute(domElement, key, newValue, env.isSVG);
       }
