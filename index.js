@@ -31,6 +31,8 @@ let DEFAULT_ENV = {
   directives: DOM_PROPS_DIRECTIVES,
 };
 
+export const m = h;
+
 export function h(__tag, ...children) {
   let props = children[0];
   if (props && typeof props === 'object' && !Array.isArray(props) && !(props.__tag || props.props))
