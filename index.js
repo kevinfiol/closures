@@ -31,8 +31,11 @@ let DEFAULT_ENV = {
   directives: DOM_PROPS_DIRECTIVES,
 };
 
-export function h(type, props, ...children) {
-  props = props ?? EMPTY_OBJECT;
+export function h(__tag, ...children) {
+  let props = children[0];
+  if (props && typeof props === 'object' && !Array.isArray(props) && !(props.__tag || props.props))
+    children.shift();
+  else props = EMPTY_OBJECT;
 
   props =
     children.length > 1
@@ -40,24 +43,35 @@ export function h(type, props, ...children) {
       : children.length === 1
       ? Object.assign({}, props, { children: children[0] })
       : props;
+      
+  // parse tag
+  if (typeof __tag === 'string') {
+    let idx = __tag.indexOf('.');
+    if (~idx) {
+      let className = __tag.slice(idx + 1).replace(/\./g, ' ')
+      props.class = props.class ? className + ' ' + String(props.class) : className;
+      __tag = __tag.slice(0, idx);
+    }
+    __tag = __tag ?? 'div';
+  }
 
-  return jsx(type, props, props.key);
+  return jsx(__tag, props, props.key);
 }
 
-export function jsx(type, props, key) {
+export function jsx(__tag, props, key) {
   if (key !== key) throw new Error("Invalid NaN key");
   let vtype =
-    typeof type === "string"
+    typeof __tag === "string"
       ? VTYPE_ELEMENT
-      : isValidComponentType(type)
+      : isValidComponentType(__tag)
       ? VTYPE_COMPONENT
-      : typeof type === "function"
+      : typeof __tag === "function"
       ? VTYPE_FUNCTION
       : undefined;
   if (vtype === undefined) throw new Error("Invalid VNode type");
   return {
     vtype,
-    type,
+    __tag,
     key,
     props,
   };
@@ -143,15 +157,15 @@ function mount(vnode, env = DEFAULT_ENV) {
     };
   } else if (isElement(vnode)) {
     let node;
-    let { type, props } = vnode;
-    if (type === "svg" && !env.isSvg) {
+    let { __tag, props } = vnode;
+    if (__tag === "svg" && !env.isSvg) {
       env = Object.assign({}, env, { isSVG: true });
     }
     // TODO : {is} for custom elements
     if (!env.isSVG) {
-      node = document.createElement(type);
+      node = document.createElement(__tag);
     } else {
-      node = document.createElementNS(SVG_NS, type);
+      node = document.createElementNS(SVG_NS, __tag);
     }
     mountAttributes(node, props, env);
     let childrenRef =
@@ -173,7 +187,7 @@ function mount(vnode, env = DEFAULT_ENV) {
       children: vnode.map((child) => mount(child, env)),
     };
   } else if (isRenderFunction(vnode)) {
-    let childVNode = vnode.type(vnode.props);
+    let childVNode = vnode.__tag(vnode.props);
     let childRef = mount(childVNode, env);
     return {
       type: REF_PARENT,
@@ -182,7 +196,7 @@ function mount(vnode, env = DEFAULT_ENV) {
     };
   } else if (isComponent(vnode)) {
     let renderer = new Renderer(vnode.props, env);
-    vnode.type.mount(renderer);
+    vnode.__tag.mount(renderer);
     return {
       type: REF_PARENT,
       childRef: renderer._STATE_.ref,
@@ -218,9 +232,9 @@ function patch(
   } else if (
     isElement(newVNode) &&
     isElement(oldVNode) &&
-    newVNode.type === oldVNode.type
+    newVNode.__tag === oldVNode.__tag
   ) {
-    if (newVNode.type === "svg" && !env.isSvg) {
+    if (newVNode.__tag === "svg" && !env.isSvg) {
       env = Object.assign({}, env, { isSVG: true });
     }
     patchAttributes(ref.node, newVNode.props, oldVNode.props, env);
@@ -254,9 +268,9 @@ function patch(
   } else if (
     isRenderFunction(newVNode) &&
     isRenderFunction(oldVNode) &&
-    newVNode.type === oldVNode.type
+    newVNode.__tag === oldVNode.__tag
   ) {
-    let renderFn = newVNode.type;
+    let renderFn = newVNode.__tag;
     let shouldUpdate =
       renderFn.shouldUpdate != null
         ? renderFn.shouldUpdate(oldVNode.props, newVNode.props)
@@ -288,14 +302,14 @@ function patch(
   } else if (
     isComponent(newVNode) &&
     isComponent(oldVNode) &&
-    newVNode.type === oldVNode.type
+    newVNode.__tag === oldVNode.__tag
   ) {
     let renderer = ref.childState;
     let state = renderer._STATE_;
     state.env = env;
     state.parentNode = parentDomNode;
     renderer.setProps(newVNode.props);
-    newVNode.type.patch(renderer);
+    newVNode.__tag.patch(renderer);
     if (ref.childRef !== state.ref) {
       return {
         type: REF_PARENT,
@@ -329,7 +343,7 @@ function unmount(vnode, ref, env) {
   } else if (isRenderFunction(vnode)) {
     unmount(ref.childState, ref.childRef, env);
   } else if (isComponent(vnode)) {
-    vnode.type.unmount(ref.childState);
+    vnode.__tag.unmount(ref.childState);
   }
 }
 

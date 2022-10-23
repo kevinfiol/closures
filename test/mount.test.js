@@ -58,8 +58,8 @@ test("element with multiple children", () => {
 
   const vnode = h(
     "div",
-    null,
-    h("span", null, "span text"),
+    {},
+    h("span", {}, "span text"),
     h("input", { type: "number" }),
     "raw text"
   );
@@ -90,8 +90,8 @@ test("element with nested array", () => {
 
   const vnode = h(
     "div",
-    null,
-    h("span", null, ["span text"]),
+    {},
+    h("span", {}, ["span text"]),
     [h("input", { type: "number" }), ["nested text"]],
     "raw text"
   );
@@ -184,8 +184,8 @@ test("svg elements", () => {
 
   const vnode = h(
     "div",
-    null,
-    h("span", null, "..."),
+    {},
+    h("span", {}, "..."),
     h(
       "svg",
       { width: 100, height: 200 },

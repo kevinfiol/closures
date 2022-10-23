@@ -120,10 +120,10 @@ test("patch attributes (svg)", () => {
   render(
     h(
       "div",
-      null,
-      h("span", null, "..."),
-      h("svg", null, h("circle", { cx: 50, cy: 60, r: 30 })),
-      h("span", null, "...")
+      {},
+      h("span", {}, "..."),
+      h("svg", {}, h("circle", { cx: 50, cy: 60, r: 30 })),
+      h("span", {}, "...")
     ),
     root
   );
@@ -138,11 +138,11 @@ test("patch attributes (svg)", () => {
   render(
     h(
       "div",
-      null,
-      h("span", null, "..."),
+      {},
+      h("span", {}, "..."),
       h(
         "svg",
-        null,
+        {},
         h("circle", { cx: 50, cy: 40, stroke: "green", fill: "yellow" })
       ),
       h("span", { onclick }, "...")
@@ -166,10 +166,10 @@ test("patch attributes (svg)", () => {
 
 test("patch non keyed children", () => {
   const root = document.createElement("div");
-  const view = (s) => h("div", null, s.split(""));
+  const view = (s) => h("div", {}, s.split(""));
 
   let node;
-  render(h("div", null, "1"), root);
+  render(h("div", {}, "1"), root);
   node = root.firstChild;
 
   function testPatch(seq, message) {
@@ -215,7 +215,7 @@ test("patch keyed children", () => {
   const view = (str) =>
     h(
       "div",
-      null,
+      {},
       str.split("").map((c) => h("span", { key: c }, c))
     );
 
@@ -286,7 +286,7 @@ test("patch fragments", () => {
   };
 
   const view = (str) => {
-    return h("div", null, "first text", seq(str), seq(str), "last text");
+    return h("div", {}, "first text", seq(str), seq(str), "last text");
   };
 
   const getChildNodes = (seq) => {
@@ -560,7 +560,7 @@ test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
     );
     assert.equal(
       domnode.tagName.toLowerCase(),
-      vdomNode.type.toLowerCase(),
+      vdomNode.__tag.toLowerCase(),
       "Tag names should match"
     );
     for (let i = 0; i < vdomNode.props.children.length; i++) {
