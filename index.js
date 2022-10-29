@@ -42,47 +42,47 @@ export const m = h;
 
 export const onRemove = f => ON_REMOVES.push(f);
 
-export function h(__tag, ...children) {
+export function h(_t, ...children) {
   let props = children[0];
-  if (props && isObj(props) && !isArr(props) && !(props.__tag || props.props))
+  if (props && isObj(props) && !isArr(props) && !(props._t || props.props))
     children.shift();
   else props = EMPTY_OBJECT;
 
   props =
     children.length > 1
-      ? Object.assign({}, props, { children })
+      ? { ...props, children }
       : children.length === 1
-      ? Object.assign({}, props, { children: children[0] })
+      ? { ...props, children: children[0] }
       : props;
 
   // parse tag
-  if (isStr(__tag)) {
-    let idx = __tag.indexOf('.');
+  if (isStr(_t)) {
+    let idx = _t.indexOf('.');
     if (~idx) {
-      let className = __tag.slice(idx + 1).replace(/\./g, ' ')
+      let className = _t.slice(idx + 1).replace(/\./g, ' ')
       props.class = props.class ? className + ' ' + String(props.class) : className;
-      __tag = __tag.slice(0, idx);
+      _t = _t.slice(0, idx);
     }
-    __tag = __tag ?? 'div';
+    _t = _t || 'div';
   }
 
-  return jsx(__tag, props, props.key);
+  return jsx(_t, props, props.key);
 }
 
-export function jsx(__tag, props, key) {
+export function jsx(_t, props, key) {
   if (key !== key) throw new Error("Invalid NaN key");
   let vtype =
-    isStr(__tag)
+    isStr(_t)
       ? VTYPE_ELEMENT
-      : isValidComponentType(__tag)
+      : isValidComponentType(_t)
       ? VTYPE_COMPONENT
-      : isFn(__tag)
+      : isFn(_t)
       ? VTYPE_FUNCTION
       : undefined;
   if (vtype === undefined) throw new Error("Invalid VNode type");
   return {
     vtype,
-    __tag,
+    _t,
     key,
     props,
   };
@@ -91,9 +91,11 @@ export function jsx(__tag, props, key) {
 export const Fragment = props => props.children;
 
 export function render(vnode, parentDomNode, options = {}) {
-  let rootRef = parentDomNode.$$PETIT_DOM_REF;
-  let env = Object.assign({}, DEFAULT_ENV);
+  let rootRef = parentDomNode.$$PETIT_DOM_REF,
+    env = { ...DEFAULT_ENV };
+
   Object.assign(env.directives, options.directives);
+
   if (rootRef == null) {
     let ref = mount(vnode, env);
     parentDomNode.$$PETIT_DOM_REF = { ref, vnode };
@@ -166,15 +168,15 @@ function mount(vnode, env = DEFAULT_ENV) {
     };
   } else if (isElement(vnode)) {
     let node;
-    let { __tag, props } = vnode;
-    if (__tag === "svg" && !env.isSvg) {
-      env = Object.assign({}, env, { isSVG: true });
+    let { _t, props } = vnode;
+    if (_t === "svg" && !env.isSvg) {
+      env = { ...env, isSVG: true };
     }
     // TODO : {is} for custom elements
     if (!env.isSVG) {
-      node = document.createElement(__tag);
+      node = document.createElement(_t);
     } else {
-      node = document.createElementNS(SVG_NS, __tag);
+      node = document.createElementNS(SVG_NS, _t);
     }
 
     // element lifecycle hooks
@@ -200,20 +202,20 @@ function mount(vnode, env = DEFAULT_ENV) {
       children: vnode.map((child) => mount(child, env)),
     };
   } else if (isRenderFunction(vnode)) {
-    let childVNode = vnode.__tag(vnode.props);
+    let childVNode = vnode._t(vnode.props);
 
     if (isFn(childVNode)) {
       let cmp,
         view = childVNode,
         id = ID(),
-        cmps = CLOSURE_TO_CMP.get(vnode.__tag) ?? {};
-      
+        cmps = CLOSURE_TO_CMP.get(vnode._t) || {};
+
       vnode.id = id;
       cmp = toClosureCmp(vnode, view)
       
       cmps[id] = cmp;
-      CLOSURE_TO_CMP.set(vnode.__tag, cmps);
-      CMP_TO_CLOSURE.set(cmp, vnode.__tag);
+      CLOSURE_TO_CMP.set(vnode._t, cmps);
+      CMP_TO_CLOSURE.set(cmp, vnode._t);
       return mount(cmp);
     }
 
@@ -233,18 +235,18 @@ function mount(vnode, env = DEFAULT_ENV) {
         idx = childs.length;
         
       // attach method to remove self from parent
-      vnode.__tag.removeFromParent = _ => childs.splice(idx, 1);
+      vnode._t.removeFromParent = _ => childs.splice(idx, 1);
 
       childs.push({
         id: vnode.id,
         vtype: VTYPE_FUNCTION,
-        __tag: child_closure
+        _t: child_closure
       });
 
       CHILDS.set(parentCmp, childs);
     }
 
-    vnode.__tag.mount(renderer);
+    vnode._t.mount(renderer);
     return {
       type: REF_PARENT,
       childRef: renderer._STATE_.ref,
@@ -283,10 +285,10 @@ function patch(
   } else if (
     isElement(newVNode) &&
     isElement(oldVNode) &&
-    newVNode.__tag === oldVNode.__tag
+    newVNode._t === oldVNode._t
   ) {
-    if (newVNode.__tag === "svg" && !env.isSvg) {
-      env = Object.assign({}, env, { isSVG: true });
+    if (newVNode._t === "svg" && !env.isSvg) {
+      env = { ...env, isSVG: true };
     }
     patchAttributes(ref.node, newVNode.props, oldVNode.props, env);
     let oldChildren = oldVNode.props.children;
@@ -319,9 +321,9 @@ function patch(
   } else if (
     isRenderFunction(newVNode) &&
     isRenderFunction(oldVNode) &&
-    newVNode.__tag === oldVNode.__tag
+    newVNode._t === oldVNode._t
   ) {
-    let renderFn = newVNode.__tag;
+    let renderFn = newVNode._t;
     let shouldUpdate =
       renderFn.shouldUpdate != null
         ? renderFn.shouldUpdate(oldVNode.props, newVNode.props)
@@ -366,14 +368,14 @@ function patch(
   } else if (
     isComponent(newVNode) &&
     isComponent(oldVNode) &&
-    newVNode.__tag === oldVNode.__tag
+    newVNode._t === oldVNode._t
   ) {
     let renderer = ref.childState;
     let state = renderer._STATE_;
     state.env = env;
     state.parentNode = parentDomNode;
     renderer.setProps(newVNode.props);
-    newVNode.__tag.patch(renderer);
+    newVNode._t.patch(renderer);
     if (ref.childRef !== state.ref) {
       return {
         type: REF_PARENT,
@@ -405,7 +407,7 @@ function unmount(vnode, ref, env) {
       unmount(childVNode, ref.children[index], env)
     );
   } else if (isRenderFunction(vnode)) {
-    let cmp, cmps = CLOSURE_TO_CMP.get(vnode.__tag);
+    let cmp, cmps = CLOSURE_TO_CMP.get(vnode._t);
     if (cmps && vnode.id && (cmp = cmps[vnode.id])) {
       delete cmps[vnode.id];
       CMP_TO_CLOSURE.delete(cmp);
@@ -414,7 +416,7 @@ function unmount(vnode, ref, env) {
 
     unmount(ref.childState, ref.childRef, env);
   } else if (isComponent(vnode)) {
-    vnode.__tag.unmount(ref.childState);
+    vnode._t.unmount(ref.childState);
   }
 }
 
@@ -661,7 +663,7 @@ function mountAttributes(domElement, props, env) {
     if (key === "key" || key === "children" || key in env.directives) continue;
     if (key.startsWith("on")) {
       let cmp = MOUNTING[MOUNTING.length - 1];
-      domElement[key.toLowerCase()] = cmp ? cmp.__tag.event(props[key]) : props[key];
+      domElement[key.toLowerCase()] = cmp ? cmp._t.event(props[key]) : props[key];
     } else {
       setDOMAttribute(domElement, key, props[key], env.isSVG);
     }
@@ -676,7 +678,7 @@ function patchAttributes(domElement, newProps, oldProps, env) {
     if (oldValue !== newValue) {
       if (key.startsWith("on")) {
         let cmp = MOUNTING[MOUNTING.length - 1];
-        domElement[key.toLowerCase()] = cmp ? cmp.__tag.event(newValue) : newValue;
+        domElement[key.toLowerCase()] = cmp ? cmp._t.event(newValue) : newValue;
       } else {
         setDOMAttribute(domElement, key, newValue, env.isSVG);
       }
@@ -714,13 +716,13 @@ function setDOMAttribute(el, attr, value, isSVG) {
 }
 
 function toClosureCmp(vnode, view) {
-  let onRemove = ON_REMOVES.pop() ?? noop,
+  let onRemove = ON_REMOVES.pop() || noop,
     cmp = {
       key: vnode.key,
       id: vnode.id,
       vtype: VTYPE_COMPONENT,
       props: vnode.props || {},
-      __tag: {
+      _t: {
         view,
         removeFromParent: noop,
         event: noop,
@@ -737,13 +739,13 @@ function toClosureCmp(vnode, view) {
             CHILDS.delete(cmp);
           }
           
-          cmp.__tag.removeFromParent();
+          cmp._t.removeFromParent();
         }
       }
     };
   
   function render(ctx) {
-    cmp.__tag.event = fn => ev => {
+    cmp._t.event = fn => ev => {
       fn(ev);
       MOUNTING.push(cmp);
       ctx.render(view({ ...ctx.props }));

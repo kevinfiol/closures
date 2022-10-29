@@ -560,7 +560,7 @@ test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
     );
     assert.equal(
       domnode.tagName.toLowerCase(),
-      vdomNode.__tag.toLowerCase(),
+      vdomNode._t.toLowerCase(),
       "Tag names should match"
     );
     for (let i = 0; i < vdomNode.props.children.length; i++) {
