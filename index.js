@@ -69,11 +69,8 @@ function h(_t, ...children) {
     _t = _t || 'div';
   }
 
-  return jsx(_t, props, props.key);
-}
+  if (props.key !== props.key) throw new Error("Invalid NaN key");
 
-function jsx(_t, props, key) {
-  if (key !== key) throw new Error("Invalid NaN key");
   let vtype =
     isStr(_t)
       ? VTYPE_ELEMENT
@@ -82,7 +79,9 @@ function jsx(_t, props, key) {
       : isFn(_t)
       ? VTYPE_FUNCTION
       : undefined;
-  if (vtype === undefined) throw new Error("Invalid VNode type");
+
+  if (vtype === void 0) throw new Error("Invalid VNode type");
+
   return {
     vtype,
     _t,
@@ -585,22 +584,6 @@ function defaultShouldUpdate(p1, p2) {
   return false;
 }
 
-function propDirective(prop) {
-  return {
-    mount(element, value) {
-      element[prop] = value;
-    },
-    patch(element, newValue, oldValue) {
-      if (newValue !== oldValue) {
-        element[prop] = newValue;
-      }
-    },
-    unmount(element, _) {
-      element[prop] = null;
-    },
-  };
-}
-
 function getDomNode(ref) {
   if (ref.type === REF_SINGLE) {
     return ref.node;
@@ -667,35 +650,6 @@ function replaceDom(parent, newRef, oldRef) {
   removeDom(parent, oldRef);
 }
 
-function mountDirectives(domElement, props, env) {
-  for (let key in props) {
-    if (key in env.directives) {
-      env.directives[key].mount(domElement, props[key]);
-    }
-  }
-}
-
-function patchDirectives(domElement, newProps, oldProps, env) {
-  for (let key in newProps) {
-    if (key in env.directives) {
-      env.directives[key].patch(domElement, newProps[key], oldProps[key]);
-    }
-  }
-  for (let key in oldProps) {
-    if (key in env.directives && !(key in newProps)) {
-      env.directives[key].unmount(domElement, oldProps[key]);
-    }
-  }
-}
-
-function unmountDirectives(domElement, props, env) {
-  for (let key in props) {
-    if (key in env.directives) {
-      env.directives[key].unmount(domElement, props[key]);
-    }
-  }
-}
-
 function mountAttributes(domElement, props, env, globalRedraw) {
   for (var key in props) {
     if (key === "key" || key === "children" || key in env.directives) continue;
@@ -726,7 +680,6 @@ function patchAttributes(domElement, newProps, oldProps, env, globalRedraw) {
     if (
       key === "key" ||
       key === "children" ||
-      key in env.directives ||
       key in newProps
     )
       continue;
