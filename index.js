@@ -32,9 +32,9 @@ let NIL = void 0,
   NS_ATTRS = { show: XLINK_NS, actuate: XLINK_NS, href: XLINK_NS },
   REF_SINGLE = 1, // ref with single dom node
   VTYPE_ELEMENT = 1,
+  VTYPE_FUNCTION = 2,
   REF_ARRAY = 4, // ref with array of nodes
   REF_PARENT = 8, // ref with a child ref
-  VTYPE_FUNCTION = 2,
   RETAIN_KEY = '=',
   generateClosureId = _ => NUM++,
   isFn = x => typeof x === 'function',
@@ -517,8 +517,6 @@ export function h(_t, ...children) {
   let vtype =
     isStr(_t)
       ? VTYPE_ELEMENT
-      : _t && isFn(_t.mount)
-      ? VTYPE_COMPONENT
       : isFn(_t)
       ? VTYPE_FUNCTION
       : NIL;
@@ -527,7 +525,7 @@ export function h(_t, ...children) {
 
   // returns a vnode
   return {
-    vtype, // (number) VTYPE_ELEMENT | VTYPE_COMPONENT | VTYPE_FUNCTION
+    vtype, // (number) VTYPE_ELEMENT | VTYPE_FUNCTION
     _t, // (string | object | function)
     key: props.key, // string
     props // object

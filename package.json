@@ -1,6 +1,6 @@
 {
   "name": "closures",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Minimalist virtual dom library",
   "type": "module",
   "main": "dist/closures.cjs",
@@ -23,7 +23,7 @@
   ],
   "devDependencies": {
     "bundt": "1.1.5",
-    "flitch": "0.7.2",
+    "flitch": "0.7.3",
     "jsdom": "^15.1.1"
   },
   "keywords": [
