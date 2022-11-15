@@ -1,6 +1,6 @@
 import { suite } from 'flitch';
 import { strict as assert } from 'assert';
-import { h, render } from "../index.js";
+import { h, app } from "../index.js";
 
 const test = suite('Mount Tests');
 
@@ -8,13 +8,13 @@ test("DOM node", () => {
   const root = document.createElement("div");
   const vnode = document.createTextNode("dom node");
 
-  render(vnode, root);
+  app(vnode, root);
   assert.equal(root.firstChild, vnode);
 });
 
 test("text node", () => {
   const root = document.createElement("div");
-  render("raw text", root);
+  app("raw text", root);
   let node = root.firstChild;
 
   assert.equal(node.nodeName, "#text");
@@ -29,7 +29,7 @@ test("simple element", () => {
     { /*"data-type": "span",*/ class: "input", style: "color: red" },
     "span content"
   );
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.nodeName, "SPAN");
@@ -45,7 +45,7 @@ test("simple element without children", () => {
 
   const vnode = h("input", { type: "text" });
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.nodeName, "INPUT");
@@ -64,7 +64,7 @@ test("element with multiple children", () => {
     "raw text"
   );
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.nodeName, "DIV");
@@ -96,7 +96,7 @@ test("element with nested array", () => {
     "raw text"
   );
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.nodeName, "DIV");
@@ -130,7 +130,7 @@ test("render functions", () => {
 
   const vnode = h(Box, { title: "box title" }, "box content");
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.nodeName, "H1");
@@ -145,14 +145,14 @@ test.skip("Component/sync rendering", () => {
 
   const MyComponent = {
     mount(me) {
-      me.render(me.props.some_prop);
+      me.app(me.props.some_prop);
     },
   };
 
   const props = { some_prop: "some_prop" };
   const vnode = h(MyComponent, props);
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
   assert.equal(node.nodeValue, props.some_prop);
 });
@@ -164,12 +164,12 @@ test.skip("Mount Component/async rendering", async () => {
   const MyComponent = {
     mount: (me) => {
       p = p.then(() => {
-        me.render(me.props.prop);
+        me.app(me.props.prop);
       }, 0);
     },
   };
 
-  render(h(MyComponent, { prop: "prop1" }), root);
+  app(h(MyComponent, { prop: "prop1" }), root);
 
   assert.equal(root.firstChild.nodeType, 8 /* comment node */);
 
@@ -196,7 +196,7 @@ test.skip("svg elements", () => {
     h("span", { onclick }, "...")
   );
 
-  render(vnode, root);
+  app(vnode, root);
   const node = root.firstChild;
 
   assert.equal(node.childNodes.length, 3);

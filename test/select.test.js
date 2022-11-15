@@ -1,12 +1,12 @@
 import { suite } from 'flitch';
 import { strict as assert } from 'assert';
-import { h, render } from "../index.js";
+import { h, app } from "../index.js";
 
 const test = suite('Select Tests');
 
 test("select.option.selected (single selection)", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h(
       "select",
       {},
@@ -20,15 +20,14 @@ test("select.option.selected (single selection)", () => {
   const node = root.firstChild;
   assert.equal(node.selectedIndex, 1, "selected index should be 1");
 
-  render(
+  redraw(
     h(
       "select",
       {},
       h("option", { value: "eat", selected: true }, "Eat"),
       h("option", { value: "pray" }, "Pray"),
       h("option", { value: "love" }, "Love")
-    ),
-    root
+    )
   );
 
   assert.equal(node.selectedIndex, 0, "selected index should be 0");
@@ -36,7 +35,7 @@ test("select.option.selected (single selection)", () => {
 
 test("select.value (single selection)", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h(
       "select",
       { value: "pray" },
@@ -51,15 +50,14 @@ test("select.value (single selection)", () => {
   assert.equal(node.selectedIndex, 1, "selected index should be 1");
   assert.equal(node.options[1].selected, true, "option 1 should be selected");
 
-  render(
+  redraw(
     h(
       "select",
       { value: "eat" },
       h("option", { value: "eat" }, "Eat"),
       h("option", { value: "pray" }, "Pray"),
       h("option", { value: "love" }, "Love")
-    ),
-    root
+    )
   );
 
   assert.equal(node.selectedIndex, 0, "selected index should be 0");
@@ -67,7 +65,7 @@ test("select.value (single selection)", () => {
 
 test("select with multiple = true", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h(
       "select",
       { multiple: true },
@@ -102,15 +100,14 @@ test("select with multiple = true", () => {
   );
   assert.equal(node.options[2].selected, true, "option 2 should be selected");
 
-  render(
+  redraw(
     h(
       "select",
       { selectedIndex: -1, multiple: true },
       h("option", { value: "eat", selected: true }, "Eat"),
       h("option", { value: "pray", selected: true }, "Pray"),
       h("option", { value: "love", selected: false }, "Love")
-    ),
-    root
+    )
   );
 
   assert.equal(

@@ -25,7 +25,7 @@ let NIL = void 0,
   CLOSURE_TO_FN = new WeakMap(),
   ON_CREATE_KEY = 'oncreate',
   NUM = 1,
-  PARENT_DOM_KEY = '$$PETIT_DOM_REF',
+  PARENT_DOM_KEY = '$_REF',
   EMPTY_OBJECT = {},
   SVG_NS = 'http://www.w3.org/2000/svg',
   XLINK_NS = 'http://www.w3.org/1999/xlink',
@@ -90,6 +90,7 @@ let replaceDom = (parent, newRef, oldRef) => {
 };
 
 let setDomAttribute = (el, attr, value, isSVG) => {
+  if (attr === 'className') attr = 'class';
   if (value === true) el.setAttribute(attr, '');
   else if (value === false) el.removeAttribute(attr);
   else (isSVG && NS_ATTRS[attr])
@@ -492,7 +493,7 @@ let patch = (parentDomNode, newVnode, oldVnode, ref, env = { ...DEFAULT_ENV }) =
 };
 
 export function h(_t, ...children) {
-  let props = children[0];
+  let idx, props = children[0];
   if (props && isObj(props) && !isArr(props) && !(props._t || props.props))
     children.shift();
   else props = EMPTY_OBJECT;
@@ -504,15 +505,11 @@ export function h(_t, ...children) {
       ? { ...props, children: children[0] }
       : props;
 
-  // parse tag
-  if (isStr(_t)) {
-    let idx = _t.indexOf('.');
-    if (~idx) {
-      let className = _t.slice(idx + 1).replace(/\./g, ' ')
-      props.class = props.class ? className + ' ' + String(props.class) : className;
-      _t = _t.slice(0, idx);
-    }
-    _t = _t || 'div';
+  // inline class parsing
+  if (isStr(_t) && ~(idx = _t.indexOf('.'))) {
+    let className = _t.slice(idx + 1).replace(/\./g, ' ')
+    props.class = props.class ? className + ' ' + String(props.class) : className;
+    _t = _t.slice(0, idx);
   }
 
   if (props.key !== props.key) throw new Error("Invalid NaN key");
@@ -545,31 +542,12 @@ export const Fragment = props => props.children;
 
 export const onRemove = fn => ON_REMOVES.push(fn);
 
-export function render(vnode, parentDomNode) {
+export function app(vnode, parentDomNode, opts = {}) {
   let ref,
-    env = { ...DEFAULT_ENV, manualRedraw: 1 },
+    env = { ...DEFAULT_ENV, manualRedraw: opts.manualRedraw },
     rootRef = parentDomNode[PARENT_DOM_KEY];
-  if (rootRef === NIL) {
-    ref = mount(vnode, env);
-    parentDomNode[PARENT_DOM_KEY] = { ref, vnode };
-    parentDomNode.textContent = '';
-    insertDom(parentDomNode, ref, NIL);
-  } else {
-    rootRef.ref = patchInPlace(
-      parentDomNode,
-      vnode,
-      rootRef.vnode,
-      rootRef.ref,
-      env
-    );
-    rootRef.vnode = vnode;
-  }
-}
 
-export function run(vnode, parentDomNode, opts = {}) {
-  let ref,
-    env = { ...DEFAULT_ENV, ...opts },
-    rootRef = parentDomNode[PARENT_DOM_KEY];
+  env.directives = { ...env.directives, ...(opts.directives || {}) };
 
   if (rootRef !== NIL)
     throw Error('App already mounted on this node');
@@ -579,13 +557,15 @@ export function run(vnode, parentDomNode, opts = {}) {
   parentDomNode.textContent = '';
   insertDom(parentDomNode, ref, NIL);
 
-  return env.redraw = _ => {
+  return env.redraw = (newVnode = vnode) => {
     rootRef.ref = patchInPlace(
       parentDomNode,
-      vnode,
+      newVnode,
       rootRef.vnode,
       rootRef.ref,
       env
     );
+
+    rootRef.vnode = newVnode;
   };
 }

@@ -1,12 +1,12 @@
 import { suite } from 'flitch';
 import { strict as assert } from 'assert';
-import { h, render } from "../index.js";
+import { h, app } from "../index.js";
 
 const test = suite('Range Tests');
 
 test("range input", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h("input", {
       value: "0.5",
       type: "range",
@@ -21,15 +21,14 @@ test("range input", () => {
 
   assert.equal(node.value, "0.5", "range value should be 0.5");
 
-  render(
+  redraw(
     h("input", {
       value: "1.5",
       type: "range",
       min: "0",
       max: "2",
       step: "0.05",
-    }),
-    root
+    })
   );
 
   assert.equal(node.value, "1.5", "range value should be 1.5");

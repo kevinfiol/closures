@@ -1,6 +1,6 @@
 import { suite } from 'flitch';
 import { strict as assert } from 'assert';
-import { Fragment, h, render } from "../index.js";
+import { Fragment, h, app } from "../index.js";
 
 const test = suite('Patch Tests');
 
@@ -31,12 +31,12 @@ test("DOM node", () => {
 
   const node = document.createTextNode("node1");
 
-  render(node, root);
+  let redraw = app(node, root);
   const node1 = root.firstChild;
 
   node.nodeValue = "node1 new text";
 
-  render(node, root);
+  redraw(node);
   const node2 = root.firstChild;
 
   assert.equal(node, node1);
@@ -47,10 +47,10 @@ test("DOM node", () => {
 test("text node", () => {
   const root = document.createElement("div");
 
-  render("old text", root);
+  let redraw = app("old text", root);
   const node1 = root.firstChild;
 
-  render("new text", root);
+  redraw("new text");
   const node2 = root.firstChild;
 
   assert.equal(node1, node2);
@@ -61,23 +61,23 @@ test("patch node with different types", () => {
   const root = document.createElement("div");
 
   const vnode1 = "old text";
-  render(vnode1, root);
+  let redraw = app(vnode1, root);
   const node1 = root.firstChild;
 
   // see issue #31: Null doesn't remove previous node
-  render(null, root);
+  redraw(null);
   const node2 = root.firstChild;
 
   assert.notEqual(node1, node2);
   assert.equal(node2.nodeType, 8 /* comment node type*/);
 
-  render(h("span"), root);
+  redraw(h("span"));
   const node3 = root.firstChild;
 
   assert.notEqual(node2, node3);
   assert.equal(node3.tagName, "SPAN");
 
-  render(h("div"), root);
+  redraw(h("div"));
   const node4 = root.firstChild;
 
   assert.notEqual(node3, node4);
@@ -87,7 +87,7 @@ test("patch node with different types", () => {
 test("patch props", () => {
   const root = document.createElement("div");
 
-  render(
+  let redraw = app(
     h("input", {
       type: "text",
       value: "old value",
@@ -97,13 +97,12 @@ test("patch props", () => {
   );
   const node = root.firstChild;
 
-  render(
+  redraw(
     h("input", {
       type: "text",
       value: "new value",
       style: "color: green; border: 1px solid black",
-    }),
-    root
+    })
   );
   const node2 = root.firstChild;
 
@@ -117,7 +116,7 @@ test("patch props", () => {
 test("patch attributes (svg)", () => {
   const root = document.createElement("div");
 
-  render(
+  let redraw = app(
     h(
       "div",
       {},
@@ -135,7 +134,7 @@ test("patch attributes (svg)", () => {
   assert.equal(svgCircle.getAttribute("r"), "30");
 
   const onclick = () => {};
-  render(
+  redraw(
     h(
       "div",
       {},
@@ -146,8 +145,7 @@ test("patch attributes (svg)", () => {
         h("circle", { cx: 50, cy: 40, stroke: "green", fill: "yellow" })
       ),
       h("span", { onclick }, "...")
-    ),
-    root
+    )
   );
 
   assert.equal(svgCircle.getAttribute("cx"), "50");
@@ -169,11 +167,11 @@ test("patch non keyed children", () => {
   const view = (s) => h("div", {}, s.split(""));
 
   let node;
-  render(h("div", {}, "1"), root);
+  let redraw = app(h("div", {}, "1"), root);
   node = root.firstChild;
 
   function testPatch(seq, message) {
-    render(view(seq), root);
+    redraw(view(seq));
     // assert.plan(seq.length * 2 + 1);
 
     assert.equal(
@@ -205,7 +203,7 @@ test("patch non keyed children", () => {
   testPatch(shuffle("2x3y67z8".split("")).join(""), "shuffle");
   testPatch("ABCDEF", "replace all");
 
-  render(view(""), root);
+  redraw(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
 });
@@ -219,14 +217,14 @@ test("patch keyed children", () => {
       str.split("").map((c) => h("span", { key: c }, c))
     );
 
-  render(h("div"), root);
+  let redraw = app(h("div"), root);
 
   let node = root.firstChild,
     prevChildNodes = Array.from(node.childNodes),
     prevSeq = "";
 
   function testPatch(seq, message) {
-    render(view(seq), root);
+    redraw(view(seq));
     let childNodes = Array.from(node.childNodes);
 
     // assert.plan(seq.length * 2 + 1);
@@ -269,7 +267,7 @@ test("patch keyed children", () => {
   testPatch(shuffle("2x6y37z8".split("")).join(""), "shuffle");
   testPatch("ABCDEF", "replace all");
 
-  render(view(""), root);
+  redraw(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
 });
@@ -297,7 +295,7 @@ test("patch fragments", () => {
     ];
   };
 
-  render(h("div"), root);
+  let redraw = app(h("div"), root);
 
   let prevChildNodes = getChildNodes("");
   let prevSeq = "";
@@ -329,7 +327,7 @@ test("patch fragments", () => {
   }
 
   function testPatch(seq, message) {
-    render(view(seq), root);
+    redraw(view(seq));
     let childNodes = getChildNodes(seq);
     matchSeq(
       seq,
@@ -372,10 +370,10 @@ test("patch render functions", () => {
     return h("h1", { title: props.title }, props.children);
   }
 
-  render(h(Box, { title: "box title" }, "box content"), root);
+  let redraw = app(h(Box, { title: "box title" }, "box content"), root);
   const node = root.firstChild; // renderCalls = 1
 
-  render(h(Box, { title: "another box title" }, "another box content"), root);
+  redraw(h(Box, { title: "another box title" }, "another box content"));
   // renderCalls = 2
   assert.equal(node.title, "another box title");
   assert.equal(node.firstChild.nodeValue, "another box content");
@@ -399,19 +397,19 @@ test.skip("Patch Component/sync rendering", () => {
 
   const MyComponent = {
     mount: (me) => {
-      me.render(me.props.prop);
+      me.app(me.props.prop);
     },
     patch: (me) => {
-      me.render(me.props.prop + me.oldProps.prop);
+      me.app(me.props.prop + me.oldProps.prop);
     },
     unmount: () => {},
   };
 
-  render(h(MyComponent, { prop: "prop1" }), root);
+  app(h(MyComponent, { prop: "prop1" }), root);
   const node = root.firstChild;
   assert.equal(node.nodeValue, "prop1");
 
-  render(h(MyComponent, { prop: "prop2" }), root);
+  app(h(MyComponent, { prop: "prop2" }), root);
 
   assert.equal(node.nodeValue, "prop2prop1");
 });
@@ -422,19 +420,19 @@ test.skip("Patch Component/async rendering", async () => {
   let p = new Promise((resolve) => setTimeout(resolve, 0));
   const MyComponent = {
     mount: (me) => {
-      me.render(me.props.prop);
+      me.app(me.props.prop);
     },
     patch: (me) => {
       p = p.then(() => {
-        me.render(me.props.prop + me.oldProps.prop);
+        me.app(me.props.prop + me.oldProps.prop);
       });
     },
     unmount: () => {},
   };
 
-  render(h(MyComponent, { prop: "prop1" }), root);
+  app(h(MyComponent, { prop: "prop1" }), root);
 
-  render(h(MyComponent, { prop: "prop2" }), root);
+  app(h(MyComponent, { prop: "prop2" }), root);
 
   assert.equal(root.firstChild.nodeValue, "prop1");
   await p.then(() => {
@@ -445,7 +443,7 @@ test.skip("Patch Component/async rendering", async () => {
 test("issues #24: applyDiff fails to insert when oldChildren is modified", () => {
   const root = document.createElement("div");
 
-  render(
+  let redraw = app(
     h("div", {}, [
       h("p", null, "p"),
       h("div", { key: "x" }, "div"),
@@ -456,20 +454,19 @@ test("issues #24: applyDiff fails to insert when oldChildren is modified", () =>
   );
   //const node = root.firstChild
 
-  render(
+  redraw(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
       h("div", { key: "x" }, "div"),
       h("p", null, "p"),
-    ]),
-    root
+    ])
   );
 });
 
 test("issues #25: applyDiff fails with empty strings", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h("div", {}, [
       h("p", null, "p"),
       "",
@@ -480,20 +477,19 @@ test("issues #25: applyDiff fails with empty strings", () => {
   );
   //const node = root.firstChild
 
-  render(
+  redraw(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
       "",
       h("p", null, "p"),
-    ]),
-    root
+    ])
   );
 });
 
 test("issues #26: applyDiff fails with blank strings", () => {
   const root = document.createElement("root");
-  render(
+  let redraw = app(
     h("div", {}, [
       h("p", null, "p"),
       " ",
@@ -503,20 +499,19 @@ test("issues #26: applyDiff fails with blank strings", () => {
     root
   );
 
-  render(
+  redraw(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
       " ",
       h("p", null, "p"),
-    ]),
-    root
+    ])
   );
 });
 
 test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
   const root = document.createElement("div");
-  render(
+  let redraw = app(
     h("div", {}, [
       h("p", {}, [
         "Text",
@@ -538,7 +533,7 @@ test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
     h("p", {}, ["Text", h("a", {}, ["Text"]), "Text"]),
     h("div", {}, []),
   ]);
-  render(vnode, root);
+  redraw(vnode);
   const node = root.firstChild;
 
   function checkSimlilarity(vdomNode, domnode) {
