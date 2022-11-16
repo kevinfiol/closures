@@ -117,7 +117,7 @@ let patchAttributes = (el, newProps, oldProps, env) => {
 
     let oldValue = oldProps[key],
       newValue = newProps[key];
-    
+
     if (oldValue !== newValue)
       key.startsWith('on')
         ? el[key.toLowerCase()] = ev => { newValue(ev); !env.manualRedraw && env.rerender(); }
@@ -509,8 +509,10 @@ export function h(_t, ...children) {
 
   // inline class parsing
   if (isStr(_t) && ~(idx = _t.indexOf('.'))) {
-    let className = _t.slice(idx + 1).replace(/\./g, ' ')
-    props.class = props.class ? className + ' ' + String(props.class) : className;
+    let classProp = props.class || props.className,
+      className = _t.slice(idx + 1).replace(/\./g, ' ') + (classProp ? ' ' + classProp : '');
+
+    if (className) props.class = className;
     _t = _t.slice(0, idx);
   }
 
