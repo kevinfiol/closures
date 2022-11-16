@@ -1,10 +1,10 @@
 let NIL = void 0,
   noop = _ => {},
   propDirective = prop => ({
-    mount(el, value) {
+    mount(el, value = '') {
       el[prop] = value;
     },
-    patch(el, newValue, oldValue) {
+    patch(el, newValue = '', oldValue) {
       if (newValue !== oldValue) el[prop] = newValue;
     },
     unmount(el) {
@@ -21,6 +21,7 @@ let NIL = void 0,
       innerHTML: propDirective('innerHTML')
     }
   },
+  RERENDERS = [],
   ON_REMOVES = [],
   CLOSURE_TO_FN = new WeakMap(),
   ON_CREATE_KEY = 'oncreate',
@@ -91,6 +92,7 @@ let replaceDom = (parent, newRef, oldRef) => {
 
 let setDomAttribute = (el, attr, value, isSVG) => {
   if (attr === 'className') attr = 'class';
+  if (value === NIL) value = '';
   if (value === true) el.setAttribute(attr, '');
   else if (value === false) el.removeAttribute(attr);
   else (isSVG && NS_ATTRS[attr])
@@ -102,7 +104,7 @@ let mountAttributes = (el, props, env) => {
   for (let key in props) {
     if (key === 'key' || key === 'children' || key === ON_CREATE_KEY || key in env.directives) continue;
     else if (key.startsWith('on'))
-      el[key.toLowerCase()] = ev => { props[key](ev); !env.manualRedraw && env.redraw(); };
+      el[key.toLowerCase()] = ev => { props[key](ev); !env.manualRedraw && env.rerender(); };
     else setDomAttribute(el, key, props[key], env.isSVG);
   }
 };
@@ -118,7 +120,7 @@ let patchAttributes = (el, newProps, oldProps, env) => {
     
     if (oldValue !== newValue)
       key.startsWith('on')
-        ? el[key.toLowerCase()] = ev => { newValue(ev); !env.manualRedraw && env.redraw(); }
+        ? el[key.toLowerCase()] = ev => { newValue(ev); !env.manualRedraw && env.rerender(); }
         : setDomAttribute(el, key, newValue, env.isSVG);
   }
 
@@ -555,15 +557,25 @@ export function app(vnode, parentDomNode, opts = {}) {
   parentDomNode.textContent = '';
   insertDom(parentDomNode, ref, NIL);
 
-  return env.redraw = (newVnode = vnode) => {
-    rootRef.ref = patchInPlace(
-      parentDomNode,
-      newVnode,
-      rootRef.vnode,
-      rootRef.ref,
-      env
-    );
+  // not passing a new vnode will rerender the app in place
+  return RERENDERS.push(
+    env.rerender = (newVnode = vnode) => {
+      rootRef.ref = patchInPlace(
+        parentDomNode,
+        newVnode,
+        rootRef.vnode,
+        rootRef.ref,
+        env
+      );
 
-    rootRef.vnode = newVnode;
-  };
+      rootRef.vnode = newVnode;
+    }
+  ) && env.rerender;
+}
+
+// "global" redraw
+// will rerender all mounted apps
+export const redraw = _ => {
+  for (let i = 0; i < RERENDERS.length; i++)
+    RERENDERS[i]();
 }

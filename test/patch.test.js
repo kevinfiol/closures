@@ -31,12 +31,12 @@ test("DOM node", () => {
 
   const node = document.createTextNode("node1");
 
-  let redraw = app(node, root);
+  let rerender = app(node, root);
   const node1 = root.firstChild;
 
   node.nodeValue = "node1 new text";
 
-  redraw(node);
+  rerender(node);
   const node2 = root.firstChild;
 
   assert.equal(node, node1);
@@ -47,10 +47,10 @@ test("DOM node", () => {
 test("text node", () => {
   const root = document.createElement("div");
 
-  let redraw = app("old text", root);
+  let rerender = app("old text", root);
   const node1 = root.firstChild;
 
-  redraw("new text");
+  rerender("new text");
   const node2 = root.firstChild;
 
   assert.equal(node1, node2);
@@ -61,23 +61,23 @@ test("patch node with different types", () => {
   const root = document.createElement("div");
 
   const vnode1 = "old text";
-  let redraw = app(vnode1, root);
+  let rerender = app(vnode1, root);
   const node1 = root.firstChild;
 
   // see issue #31: Null doesn't remove previous node
-  redraw(null);
+  rerender(null);
   const node2 = root.firstChild;
 
   assert.notEqual(node1, node2);
   assert.equal(node2.nodeType, 8 /* comment node type*/);
 
-  redraw(h("span"));
+  rerender(h("span"));
   const node3 = root.firstChild;
 
   assert.notEqual(node2, node3);
   assert.equal(node3.tagName, "SPAN");
 
-  redraw(h("div"));
+  rerender(h("div"));
   const node4 = root.firstChild;
 
   assert.notEqual(node3, node4);
@@ -87,7 +87,7 @@ test("patch node with different types", () => {
 test("patch props", () => {
   const root = document.createElement("div");
 
-  let redraw = app(
+  let rerender = app(
     h("input", {
       type: "text",
       value: "old value",
@@ -97,7 +97,7 @@ test("patch props", () => {
   );
   const node = root.firstChild;
 
-  redraw(
+  rerender(
     h("input", {
       type: "text",
       value: "new value",
@@ -116,7 +116,7 @@ test("patch props", () => {
 test("patch attributes (svg)", () => {
   const root = document.createElement("div");
 
-  let redraw = app(
+  let rerender = app(
     h(
       "div",
       {},
@@ -134,7 +134,7 @@ test("patch attributes (svg)", () => {
   assert.equal(svgCircle.getAttribute("r"), "30");
 
   const onclick = () => {};
-  redraw(
+  rerender(
     h(
       "div",
       {},
@@ -167,11 +167,11 @@ test("patch non keyed children", () => {
   const view = (s) => h("div", {}, s.split(""));
 
   let node;
-  let redraw = app(h("div", {}, "1"), root);
+  let rerender = app(h("div", {}, "1"), root);
   node = root.firstChild;
 
   function testPatch(seq, message) {
-    redraw(view(seq));
+    rerender(view(seq));
     // assert.plan(seq.length * 2 + 1);
 
     assert.equal(
@@ -203,7 +203,7 @@ test("patch non keyed children", () => {
   testPatch(shuffle("2x3y67z8".split("")).join(""), "shuffle");
   testPatch("ABCDEF", "replace all");
 
-  redraw(view(""));
+  rerender(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
 });
@@ -217,14 +217,14 @@ test("patch keyed children", () => {
       str.split("").map((c) => h("span", { key: c }, c))
     );
 
-  let redraw = app(h("div"), root);
+  let rerender = app(h("div"), root);
 
   let node = root.firstChild,
     prevChildNodes = Array.from(node.childNodes),
     prevSeq = "";
 
   function testPatch(seq, message) {
-    redraw(view(seq));
+    rerender(view(seq));
     let childNodes = Array.from(node.childNodes);
 
     // assert.plan(seq.length * 2 + 1);
@@ -267,7 +267,7 @@ test("patch keyed children", () => {
   testPatch(shuffle("2x6y37z8".split("")).join(""), "shuffle");
   testPatch("ABCDEF", "replace all");
 
-  redraw(view(""));
+  rerender(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
   assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
 });
@@ -295,7 +295,7 @@ test("patch fragments", () => {
     ];
   };
 
-  let redraw = app(h("div"), root);
+  let rerender = app(h("div"), root);
 
   let prevChildNodes = getChildNodes("");
   let prevSeq = "";
@@ -327,7 +327,7 @@ test("patch fragments", () => {
   }
 
   function testPatch(seq, message) {
-    redraw(view(seq));
+    rerender(view(seq));
     let childNodes = getChildNodes(seq);
     matchSeq(
       seq,
@@ -370,10 +370,10 @@ test("patch render functions", () => {
     return h("h1", { title: props.title }, props.children);
   }
 
-  let redraw = app(h(Box, { title: "box title" }, "box content"), root);
+  let rerender = app(h(Box, { title: "box title" }, "box content"), root);
   const node = root.firstChild; // renderCalls = 1
 
-  redraw(h(Box, { title: "another box title" }, "another box content"));
+  rerender(h(Box, { title: "another box title" }, "another box content"));
   // renderCalls = 2
   assert.equal(node.title, "another box title");
   assert.equal(node.firstChild.nodeValue, "another box content");
@@ -443,7 +443,7 @@ test.skip("Patch Component/async rendering", async () => {
 test("issues #24: applyDiff fails to insert when oldChildren is modified", () => {
   const root = document.createElement("div");
 
-  let redraw = app(
+  let rerender = app(
     h("div", {}, [
       h("p", null, "p"),
       h("div", { key: "x" }, "div"),
@@ -454,7 +454,7 @@ test("issues #24: applyDiff fails to insert when oldChildren is modified", () =>
   );
   //const node = root.firstChild
 
-  redraw(
+  rerender(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
@@ -466,7 +466,7 @@ test("issues #24: applyDiff fails to insert when oldChildren is modified", () =>
 
 test("issues #25: applyDiff fails with empty strings", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h("div", {}, [
       h("p", null, "p"),
       "",
@@ -477,7 +477,7 @@ test("issues #25: applyDiff fails with empty strings", () => {
   );
   //const node = root.firstChild
 
-  redraw(
+  rerender(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
@@ -489,7 +489,7 @@ test("issues #25: applyDiff fails with empty strings", () => {
 
 test("issues #26: applyDiff fails with blank strings", () => {
   const root = document.createElement("root");
-  let redraw = app(
+  let rerender = app(
     h("div", {}, [
       h("p", null, "p"),
       " ",
@@ -499,7 +499,7 @@ test("issues #26: applyDiff fails with blank strings", () => {
     root
   );
 
-  redraw(
+  rerender(
     h("div", {}, [
       h("pre", null, "pre"),
       h("code", null, "code"),
@@ -511,7 +511,7 @@ test("issues #26: applyDiff fails with blank strings", () => {
 
 test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h("div", {}, [
       h("p", {}, [
         "Text",
@@ -533,7 +533,7 @@ test("issues #27: New DOM-tree is not synced with vdom-tree", () => {
     h("p", {}, ["Text", h("a", {}, ["Text"]), "Text"]),
     h("div", {}, []),
   ]);
-  redraw(vnode);
+  rerender(vnode);
   const node = root.firstChild;
 
   function checkSimlilarity(vdomNode, domnode) {

@@ -6,7 +6,7 @@ const test = suite('Range Tests');
 
 test("range input", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h("input", {
       value: "0.5",
       type: "range",
@@ -21,7 +21,7 @@ test("range input", () => {
 
   assert.equal(node.value, "0.5", "range value should be 0.5");
 
-  redraw(
+  rerender(
     h("input", {
       value: "1.5",
       type: "range",

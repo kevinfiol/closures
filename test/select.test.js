@@ -6,7 +6,7 @@ const test = suite('Select Tests');
 
 test("select.option.selected (single selection)", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h(
       "select",
       {},
@@ -20,7 +20,7 @@ test("select.option.selected (single selection)", () => {
   const node = root.firstChild;
   assert.equal(node.selectedIndex, 1, "selected index should be 1");
 
-  redraw(
+  rerender(
     h(
       "select",
       {},
@@ -35,7 +35,7 @@ test("select.option.selected (single selection)", () => {
 
 test("select.value (single selection)", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h(
       "select",
       { value: "pray" },
@@ -50,7 +50,7 @@ test("select.value (single selection)", () => {
   assert.equal(node.selectedIndex, 1, "selected index should be 1");
   assert.equal(node.options[1].selected, true, "option 1 should be selected");
 
-  redraw(
+  rerender(
     h(
       "select",
       { value: "eat" },
@@ -65,7 +65,7 @@ test("select.value (single selection)", () => {
 
 test("select with multiple = true", () => {
   const root = document.createElement("div");
-  let redraw = app(
+  let rerender = app(
     h(
       "select",
       { multiple: true },
@@ -100,7 +100,7 @@ test("select with multiple = true", () => {
   );
   assert.equal(node.options[2].selected, true, "option 2 should be selected");
 
-  redraw(
+  rerender(
     h(
       "select",
       { selectedIndex: -1, multiple: true },

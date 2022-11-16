@@ -1,6 +1,6 @@
 {
   "name": "closures",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Minimalist virtual dom library",
   "type": "module",
   "main": "dist/closures.cjs",
