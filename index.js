@@ -37,6 +37,8 @@ let NIL = void 0,
   REF_ARRAY = 4, // ref with array of nodes
   REF_PARENT = 8, // ref with a child ref
   RETAIN_KEY = '=',
+  hasKey = vnode => vnode && vnode.key !== NIL && vnode.key !== null,
+  haveMatchingKeys = (x, y) => (x === null || x === NIL ? NIL : x.key) === (y === null || y === NIL ? NIL : y.key),
   generateClosureId = _ => NUM++,
   isFn = x => typeof x === 'function',
   isStr = x => typeof x === 'string',
@@ -160,7 +162,7 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
   let baseRef = { closureId, closure, onRemove };
 
   if (isEmpty(vnode))
-    return { ...baseRef, type: REF_SINGLE, node: document.createComment('NULL') };
+    return { ...baseRef, type: REF_SINGLE, node: document.createTextNode('') };
 
   if (isLeaf(vnode))
     return { ...baseRef, type: REF_SINGLE, node: document.createTextNode(vnode) };
@@ -276,8 +278,12 @@ let patchInPlace = (parentDomNode, newVnode, oldVnode, ref, env) => {
 };
 
 let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
-  // we need to retrieve the next sibling before the old children get removed from the DOM
-  let i, idx, oldVnode, newVnode, oldRef, newRef, refMap, beforeNode,
+  // we need to retrieve the next sibling before the old children get eventually removed from the current DOM document
+  let oldVnode,
+    newVnode,
+    oldRef,
+    newRef,
+    refMap,
     nextNode = getNextSibling(ref),
     children = Array(newChildren.length),
     refChildren = ref.children,
@@ -285,22 +291,22 @@ let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
     oldStart = 0,
     newEnd = newChildren.length - 1,
     oldEnd = oldChildren.length - 1;
-    
+
   while (newStart <= newEnd && oldStart <= oldEnd) {
     if (refChildren[oldStart] === NIL) {
       oldStart++;
       continue;
     }
-    
+
     if (refChildren[oldEnd] === NIL) {
       oldEnd--;
       continue;
     }
-    
+
     oldVnode = oldChildren[oldStart];
     newVnode = newChildren[newStart];
-    
-    if (oldVnode && newVnode && newVnode.key === oldVnode.key) {
+
+    if (haveMatchingKeys(newVnode, oldVnode)) {
       oldRef = refChildren[oldStart];
       newRef = children[newStart] = patchInPlace(
         parentDomNode,
@@ -309,16 +315,15 @@ let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
         oldRef,
         env
       );
-      
       newStart++;
       oldStart++;
       continue;
     }
-    
+
     oldVnode = oldChildren[oldEnd];
     newVnode = newChildren[newEnd];
-    
-    if (oldVnode && newVnode && newVnode.key === oldVnode.key) {
+
+    if (haveMatchingKeys(newVnode, oldVnode)) {
       oldRef = refChildren[oldEnd];
       newRef = children[newEnd] = patchInPlace(
         parentDomNode,
@@ -327,22 +332,24 @@ let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
         oldRef,
         env
       );
-      
       newEnd--;
       oldEnd--;
       continue;
     }
-    
-    if (refMap === NIL)
-      for (i = oldStart, refMap = {}; i <= oldEnd; i++) {
-        oldVnode = oldChildren[i];
-        if (oldVnode && oldVnode.key !== NIL)
-          refMap[oldVnode.key] = i;
-      }
-    
-    newVnode = newChildren[newStart];
-    idx = newVnode && newVnode.key !== NIL ? refMap[newVnode.key] : NIL;
 
+    if (!refMap) {
+      refMap = {};
+      for (let i = oldStart; i <= oldEnd; i++) {
+        oldVnode = oldChildren[i];
+        if (hasKey(oldVnode)) {
+          refMap[oldVnode.key] = i;
+        }
+      }
+    }
+
+    newVnode = newChildren[newStart];
+
+    let idx = hasKey(newVnode) ? refMap[newVnode.key] : NIL;
     if (idx !== NIL) {
       oldVnode = oldChildren[idx];
       oldRef = refChildren[idx];
@@ -353,45 +360,46 @@ let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
         oldRef,
         env
       );
-      
+
       insertDom(parentDomNode, newRef, getDomNode(refChildren[oldStart]));
-      
+
       if (newRef !== oldRef) {
         removeDom(parentDomNode, oldRef);
         unmount(oldVnode, oldRef, env);
       }
-      
+
       refChildren[idx] = NIL;
     } else {
       newRef = children[newStart] = mount(newVnode, env);
       insertDom(parentDomNode, newRef, getDomNode(refChildren[oldStart]));
     }
-    
+
     newStart++;
   }
-  
-  beforeNode = newEnd < newChildren.length - 1
-    ? getDomNode(children[newEnd + 1])
-    : nextNode;
-    
+
+  let beforeNode =
+    newEnd < newChildren.length - 1
+      ? getDomNode(children[newEnd + 1])
+      : nextNode;
+
   while (newStart <= newEnd) {
-    newRef = mount(newChildren[newStart], env);
+    let newRef = mount(newChildren[newStart], env);
     children[newStart] = newRef;
     insertDom(parentDomNode, newRef, beforeNode);
     newStart++;
   }
-  
+
   while (oldStart <= oldEnd) {
     oldRef = refChildren[oldStart];
-    
+
     if (oldRef !== NIL) {
       removeDom(parentDomNode, oldRef);
       unmount(oldChildren[oldStart], oldRef, env);
     }
-    
+
     oldStart++;
   }
-  
+
   ref.children = children;
 };
 
