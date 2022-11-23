@@ -69,7 +69,7 @@ test("patch node with different types", () => {
   const node2 = root.firstChild;
 
   assert.notEqual(node1, node2);
-  assert.equal(node2.nodeType, 8 /* comment node type*/);
+  assert.equal(node2.nodeType, 3 /* text node type*/);
 
   rerender(h("span"));
   const node3 = root.firstChild;
@@ -205,7 +205,7 @@ test("patch non keyed children", () => {
 
   rerender(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
-  assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
+  assert.equal(node.firstChild.nodeType, 3, "empty child should be a text node with empty string");
 });
 
 test("patch keyed children", () => {
@@ -269,7 +269,8 @@ test("patch keyed children", () => {
 
   rerender(view(""));
   assert.equal(node.childNodes.length, 1, "should contain one empty node");
-  assert.equal(node.firstChild.nodeType, 8, "empty child should be a comment");
+
+  assert.equal(node.firstChild.nodeType, 3, "empty child should be a text node with empty string");
 });
 
 test("patch fragments", () => {
