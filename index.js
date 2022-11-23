@@ -37,8 +37,6 @@ let NIL = void 0,
   REF_ARRAY = 4, // ref with array of nodes
   REF_PARENT = 8, // ref with a child ref
   RETAIN_KEY = '=',
-  doc = document,
-  createTextNode = doc.createTextNode,
   generateClosureId = _ => NUM++,
   isFn = x => typeof x === 'function',
   isStr = x => typeof x === 'string',
@@ -162,10 +160,10 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
   let baseRef = { closureId, closure, onRemove };
 
   if (isEmpty(vnode))
-    return { ...baseRef, type: REF_SINGLE, node: createTextNode('') };
+    return { ...baseRef, type: REF_SINGLE, node: document.createComment('NULL') };
 
   if (isLeaf(vnode))
-    return { ...baseRef, type: REF_SINGLE, node: createTextNode(vnode) };
+    return { ...baseRef, type: REF_SINGLE, node: document.createTextNode(vnode) };
 
   if (isElement(vnode)) {
     let node,
@@ -174,8 +172,8 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
     if (_t === 'svg' && !env.isSVG)
       env = { ...env, isSVG: true };
 
-    if (!env.isSVG) node = doc.createElement(_t);
-    else node = doc.createElementNS(SVG_NS, _t);
+    if (!env.isSVG) node = document.createElement(_t);
+    else node = document.createElementNS(SVG_NS, _t);
 
     isFn(props[ON_CREATE_KEY]) && props[ON_CREATE_KEY](node);
 
@@ -355,7 +353,9 @@ let patchChildren = (parentDomNode, newChildren, oldChildren, ref, env) => {
         oldRef,
         env
       );
-
+      
+      insertDom(parentDomNode, newRef, getDomNode(refChildren[oldStart]));
+      
       if (newRef !== oldRef) {
         removeDom(parentDomNode, oldRef);
         unmount(oldVnode, oldRef, env);
