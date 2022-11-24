@@ -37,15 +37,16 @@ let NIL = void 0,
   REF_ARRAY = 4, // ref with array of nodes
   REF_PARENT = 8, // ref with a child ref
   RETAIN_KEY = '=',
-  hasKey = vnode => vnode && vnode.key !== NIL && vnode.key !== null,
-  haveMatchingKeys = (x, y) => (x === null || x === NIL ? NIL : x.key) === (y === null || y === NIL ? NIL : y.key),
+  exists = x => x !== null && x !== undefined,
+  hasKey = vnode => vnode && exists(vnode.key),
+  haveMatchingKeys = (x, y) => (!exists(x) ? NIL : x.key) === (!exists(y) ? NIL : y.key),
   generateClosureId = _ => NUM++,
   isFn = x => typeof x === 'function',
   isStr = x => typeof x === 'string',
   isObj = x => x !== null && typeof x === 'object',
   isArr = x => Array.isArray(x),
   toJson = v => JSON.stringify(v),
-  isEmpty = c => c === null || c === false || c === NIL || (isArr(c) && c.length === 0) || (c && c._t === RETAIN_KEY),
+  isEmpty = c => !exists(c) || c === false || (isArr(c) && c.length === 0) || (c && c._t === RETAIN_KEY),
   isNonEmptyArray = c => isArr(c) && c.length > 0,
   isLeaf = c => isStr(c) || typeof c === 'number',
   isElement = c => c && c.vtype === VTYPE_ELEMENT,
@@ -93,8 +94,7 @@ let replaceDom = (parent, newRef, oldRef) => {
 };
 
 let setDomAttribute = (el, attr, value, isSVG) => {
-  if (attr === 'className') attr = 'class';
-  if (value === NIL) value = '';
+  if (!exists(value)) value = '';
   if (value === true) el.setAttribute(attr, '');
   else if (value === false) el.removeAttribute(attr);
   else (isSVG && NS_ATTRS[attr])
@@ -515,13 +515,30 @@ export function h(_t, ...children) {
       ? { ...props, children: children[0] }
       : props;
 
-  // inline class parsing
-  if (isStr(_t) && ~(idx = _t.indexOf('.'))) {
-    let classProp = props.class || props.className,
-      className = _t.slice(idx + 1).replace(/\./g, ' ') + (classProp ? ' ' + classProp : '');
+  if (isStr(_t)) {
+    if (props.className && !props.class) {
+      props.class = props.className;
+      delete props.className;
+    }
 
-    if (className) props.class = className;
-    _t = _t.slice(0, idx);
+    // class parsing
+    if (isObj(props.class)) {
+      let k, tmp = '';
+
+      for (k in props.class)
+        if (props.class[k]) {
+          tmp && (tmp += ' ');
+          tmp += k
+        }
+
+      props.class = tmp;
+    }
+
+    if (~(idx = _t.indexOf('.'))) {
+      let className = _t.slice(idx + 1).replace(/\./g, ' ') + (props.class ? ' ' + props.class : '');
+      if (className) props.class = className;
+      _t = _t.slice(0, idx);
+    }
   }
 
   if (props.key !== props.key) throw new Error("Invalid NaN key");
