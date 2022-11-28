@@ -37,6 +37,8 @@ let NIL = void 0,
   REF_ARRAY = 4, // ref with array of nodes
   REF_PARENT = 8, // ref with a child ref
   RETAIN_KEY = '=',
+  ONREMOVE = fn => ON_REMOVES.push(fn),
+  DEFAULT_CTX = () => ({ onremove: ONREMOVE }),
   exists = x => x !== null && x !== undefined,
   hasKey = vnode => vnode && exists(vnode.key),
   haveMatchingKeys = (x, y) => (!exists(x) ? NIL : x.key) === (!exists(y) ? NIL : y.key),
@@ -161,7 +163,7 @@ let unmountDirectives = (el, props, env) => {
       env.directives[key].unmount(el, props[key]);
 };
 
-let setClosure = (vnode, childVnode) => {
+function setClosure(vnode, childVnode) {
   let id = generateClosureId(),
     fnMap = CLOSURE_TO_FN.get(vnode._t) || new Map(),
     onRemove = ON_REMOVES.pop() || noop;
@@ -172,7 +174,7 @@ let setClosure = (vnode, childVnode) => {
   let closure = vnode._t;
   vnode._t = childVnode;
   return [id, closure, onRemove];
-};
+}
 
 let mount = (vnode, env, closureId, closure, onRemove = noop) => {
   let baseRef = { closureId, closure, onRemove };
@@ -225,7 +227,8 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
   }
 
   if (isRenderFunction(vnode)) {
-    let childVnode = vnode._t(vnode.props); // if this is a closure component, this will be "oninit"
+    let ctx = DEFAULT_CTX();
+    let childVnode = vnode._t(vnode.props, ctx); // if this is a closure component, this will be "oninit"
 
     if (isFn(childVnode)) {
       // closure component
@@ -235,6 +238,7 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
 
     return {
       ...baseRef,
+      ctx,
       type: REF_PARENT,
       childRef: mount(childVnode, env),
       childState: childVnode
@@ -432,7 +436,8 @@ let patch = (parentDomNode, newVnode, oldVnode, ref, env = { ...DEFAULT_ENV }) =
     if (newVnode._t === oldVnode._t && fns && closureId && (fn = fns.get(closureId)))
       x = fn;
 
-    let childVnode = x(newVnode.props);
+    let ctx = ref.ctx || DEFAULT_CTX(),
+      childVnode = x(newVnode.props, ctx);
 
     // if the newVnode is a *new* closure component
     if (isFn(childVnode)) {
@@ -441,6 +446,7 @@ let patch = (parentDomNode, newVnode, oldVnode, ref, env = { ...DEFAULT_ENV }) =
       let [_id, _closure] = setClosure(newVnode, childVnode);
       ref.closure = _closure;
       ref.closureId = _id;
+      ref.ctx = ctx;
       return patch(parentDomNode, newVnode, oldVnode, ref, env);
     }
 
@@ -587,8 +593,6 @@ h.retain = _ => h(RETAIN_KEY);
 export const m = h;
 
 export const Fragment = props => props.children;
-
-export const onRemove = fn => ON_REMOVES.push(fn);
 
 export function app(vnode, parentDomNode, opts = {}) {
   let ref,
