@@ -105,8 +105,11 @@ let setDomAttribute = (el, attr, value, isSVG) => {
 let mountAttributes = (el, props, env) => {
   for (let key in props) {
     if (key === 'key' || key === 'children' || key === ON_CREATE_KEY || key in env.directives) continue;
-    else if (key.startsWith('on'))
-      el[key.toLowerCase()] = ev => { props[key](ev); !env.manualRedraw && env.rerender(); };
+    else if (key.startsWith('on') && isFn(props[key]))
+      el[key.toLowerCase()] = ev => {
+        props[key](ev);
+        !env.manualRedraw && env.rerender();
+      };
     else setDomAttribute(el, key, props[key], env.isSVG);
   }
 };
@@ -156,6 +159,19 @@ let unmountDirectives = (el, props, env) => {
   for (let key in props)
     if (key in env.directives)
       env.directives[key].unmount(el, props[key]);
+};
+
+let setClosure = (vnode, childVnode) => {
+  let id = generateClosureId(),
+    fnMap = CLOSURE_TO_FN.get(vnode._t) || new Map(),
+    onRemove = ON_REMOVES.pop() || noop;
+
+  fnMap.set(id, childVnode); // save renderFn
+  CLOSURE_TO_FN.set(vnode._t, fnMap); // closure -> Map(id -> renderFn)
+
+  let closure = vnode._t;
+  vnode._t = childVnode;
+  return [id, closure, onRemove];
 };
 
 let mount = (vnode, env, closureId, closure, onRemove = noop) => {
@@ -213,15 +229,7 @@ let mount = (vnode, env, closureId, closure, onRemove = noop) => {
 
     if (isFn(childVnode)) {
       // closure component
-      let id = generateClosureId(),
-        fnMap = CLOSURE_TO_FN.get(vnode._t) || new Map(),
-        onRemove = ON_REMOVES.pop() || noop;
-
-      fnMap.set(id, childVnode); // save renderFn
-      CLOSURE_TO_FN.set(vnode._t, fnMap); // closure -> Map(id -> renderFn)
-
-      let closure = vnode._t;
-      vnode._t = childVnode;
+      let [id, closure, onRemove] = setClosure(vnode, childVnode);
       return mount(vnode, env, id, closure, onRemove);
     }
 
@@ -419,17 +427,30 @@ let patch = (parentDomNode, newVnode, oldVnode, ref, env = { ...DEFAULT_ENV }) =
       fn,
       fns = CLOSURE_TO_FN.get(closure);
 
-    if (fns && closureId && (fn = fns.get(closureId)))
+    // if the newVnode is the same closure component, get the reference to the render function
+    // treat the remainder of this clause as if it's a regular render function
+    if (newVnode._t === oldVnode._t && fns && closureId && (fn = fns.get(closureId)))
       x = fn;
 
-    let childVnode = x(newVnode.props),
-      childRef = patch(
-        parentDomNode,
-        childVnode,
-        ref.childState,
-        ref.childRef,
-        env
-      );
+    let childVnode = x(newVnode.props);
+
+    // if the newVnode is a *new* closure component
+    if (isFn(childVnode)) {
+      // we are patching with a new closure component which should be mounted
+      // newVnode._t is mutated by setClosure, and set to childVnode (the closure component's render fn)
+      let [_id, _closure] = setClosure(newVnode, childVnode);
+      ref.closure = _closure;
+      ref.closureId = _id;
+      return patch(parentDomNode, newVnode, oldVnode, ref, env);
+    }
+
+    let childRef = patch(
+      parentDomNode,
+      childVnode,
+      ref.childState,
+      ref.childRef,
+      env
+    );
 
     // we need to return a new ref in order for parent patches to properly replace changing DOM nodes
     if (childRef !== ref.childRef)
