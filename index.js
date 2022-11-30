@@ -537,10 +537,8 @@ export function h(_t, ...children) {
       : props;
 
   if (isStr(_t)) {
-    if (props.className && !props.class) {
+    if (props.className && !props.class)
       props.class = props.className;
-      delete props.className;
-    }
 
     // class parsing
     if (isObj(props.class)) {
